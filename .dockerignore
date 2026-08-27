@@ -1,0 +1,7 @@
+echo "node_modules
+vendor
+.env
+.git
+*.log
+*.sqlite
+" > .dockerignore

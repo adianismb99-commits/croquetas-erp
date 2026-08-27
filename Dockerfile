@@ -1,5 +1,6 @@
 FROM php:8.3-apache
 
+# Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -12,48 +13,31 @@ RUN apt-get update && apt-get install -y \
     npm \
     && apt-get clean
 
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+# Instalar extensiones PHP
+RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
 
+# Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-COPY . /var/www/html
+# Configurar Apache
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-COPY database/database.sqlite /var/www/html/database/database.sqlite
+# Copiar archivos
+WORKDIR /var/www/html
+COPY . .
 
-# Permisos correctos desde el BUILD
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 /var/www/html/storage \
-    && chmod -R 775 /var/www/html/bootstrap/cache
+# Instalar dependencias PHP
+RUN composer install --no-dev --optimize-autoloader
 
-RUN a2enmod rewrite
+# Instalar dependencias Node y compilar
+RUN npm install
+RUN npm run build
 
-RUN composer install --no-interaction --optimize-autoloader --no-dev
-RUN npm install --legacy-peer-deps && npm run build
+# Permisos
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Crear base de datos con permisos correctos
-RUN mkdir -p /var/www/html/storage \
-    && cp /var/www/html/database/database.sqlite /var/www/html/storage/database.sqlite \
-    && chown -R www-data:www-data /var/www/html/storage \
-    && chmod -R 775 /var/www/html/storage \
-    && php artisan migrate --force || true
-
-# Crear .env
-RUN echo "APP_ENV=production" > /var/www/html/.env \
-    && echo "APP_DEBUG=false" >> /var/www/html/.env \
-    && echo "APP_KEY=base64:2z7bDiQNavSIDL3dQsct9WegO5OfSqjWvUdDw8pzPCg=" >> /var/www/html/.env \
-    && echo "APP_URL=https://antillas-premier-league.onrender.com" >> /var/www/html/.env \
-    && echo "DB_CONNECTION=sqlite" >> /var/www/html/.env \
-    && echo "DB_DATABASE=/var/www/html/storage/database.sqlite" >> /var/www/html/.env \
-    && chown www-data:www-data /var/www/html/.env
-
-# Configurar Apache para public
-RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf \
-    && sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/apache2.conf \
-    && a2enmod rewrite
-
-EXPOSE 80
-
-# Forzar que Vite use HTTPS
-RUN echo "VITE_APP_URL=https://antillas-premier-league.onrender.com" >> /var/www/html/.env
-# CMD simple (los permisos ya están en el BUILD)
-CMD ["sh", "-c", "php artisan migrate --force || true && /usr/sbin/apache2ctl -D FOREGROUND"]
+EXPOSE 8000
+CMD php artisan serve --host=0.0.0.0 --port=8000

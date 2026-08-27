@@ -1,6 +1,6 @@
 FROM php:8.3-apache
 
-# Instalar dependencias del sistema
+# Instalar dependencias del sistema incluyendo PostgreSQL
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -11,9 +11,10 @@ RUN apt-get update && apt-get install -y \
     unzip \
     nodejs \
     npm \
+    libpq-dev \
     && apt-get clean
 
-# Instalar extensiones PHP
+# Instalar extensiones PHP (pdo_pgsql necesita libpq-dev)
 RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
 
 # Instalar Composer

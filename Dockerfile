@@ -1,6 +1,6 @@
 FROM php:8.3-apache
 
-# Instalar dependencias del sistema incluyendo PostgreSQL
+# Instalar dependencias del sistema incluyendo PostgreSQL y GMP
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -12,10 +12,11 @@ RUN apt-get update && apt-get install -y \
     nodejs \
     npm \
     libpq-dev \
+    libgmp-dev \
     && apt-get clean
 
-# Instalar extensiones PHP (pdo_pgsql necesita libpq-dev)
-RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
+# Instalar extensiones PHP (incluyendo gmp)
+RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd gmp
 
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -29,8 +30,8 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 WORKDIR /var/www/html
 COPY . .
 
-# Instalar dependencias PHP
-RUN composer install --no-dev --optimize-autoloader
+# Instalar dependencias PHP (ignorando ext-gmp si falla)
+RUN composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-gmp || composer install --no-dev --optimize-autoloader
 
 # Instalar dependencias Node y compilar
 RUN npm install

@@ -30,11 +30,11 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 WORKDIR /var/www/html
 COPY . .
 
-# Instalar dependencias PHP (ignorando ext-gmp si falla)
-RUN composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-gmp || composer install --no-dev --optimize-autoloader
+# Instalar dependencias PHP
+RUN composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-gmp
 
-# Instalar dependencias Node y compilar
-RUN npm install
+# Instalar dependencias Node con --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 RUN npm run build
 
 # Permisos

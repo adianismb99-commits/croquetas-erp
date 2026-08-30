@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useForm } from '@inertiajs/react';
+import React from 'react';
 import GuestLayout from '@/Layouts/GuestLayout';
+import { useForm } from '@inertiajs/react';
 
 export default function Login({ status }) {
   const { data, setData, post, processing, errors } = useForm({

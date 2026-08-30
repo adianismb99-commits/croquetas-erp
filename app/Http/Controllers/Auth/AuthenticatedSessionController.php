@@ -25,21 +25,10 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
-        // 👇 VERIFICAR QUE EL USUARIO NO ESTÉ BLOQUEADO
-        $user = Auth::user();
-        if (!$user->is_active) {
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return back()->withErrors([
-                'email' => 'Tu cuenta ha sido desactivada. Contacta al administrador.',
-            ]);
-        }
-
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Redirigir directamente a /dashboard
+        return redirect('/dashboard');
     }
 
     public function destroy(Request $request): RedirectResponse

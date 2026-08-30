@@ -11,7 +11,14 @@ export default function Login({ status }) {
 
   const submit = (e) => {
     e.preventDefault();
-    post('/login');
+    post('/login', {
+      onSuccess: () => {
+        console.log('✅ Login exitoso');
+      },
+      onError: (errors) => {
+        console.log('❌ Error en login:', errors);
+      },
+    });
   };
 
   return (
@@ -29,7 +36,7 @@ export default function Login({ status }) {
                 type="email"
                 value={data.email}
                 onChange={(e) => setData('email', e.target.value)}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
+                className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#6B3FA0] focus:outline-none"
                 required
               />
               {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
@@ -41,7 +48,7 @@ export default function Login({ status }) {
                 type="password"
                 value={data.password}
                 onChange={(e) => setData('password', e.target.value)}
-                className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
+                className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#6B3FA0] focus:outline-none"
                 required
               />
               {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
@@ -65,9 +72,9 @@ export default function Login({ status }) {
             <button
               type="submit"
               disabled={processing}
-              className="w-full bg-[#6B3FA0] hover:bg-[#9B6FC0] text-white py-2 rounded-lg transition-colors"
+              className="w-full bg-[#6B3FA0] hover:bg-[#9B6FC0] text-white py-2 rounded-lg transition-colors disabled:opacity-50"
             >
-              Iniciar sesión
+              {processing ? 'Cargando...' : 'Iniciar sesión'}
             </button>
           </div>
         </form>

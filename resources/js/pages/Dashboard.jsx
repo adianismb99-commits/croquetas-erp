@@ -331,7 +331,7 @@ export default function Dashboard() {
                         {mov.cantidad} {mov.unidad}
                       </td>
                       <td className="px-4 py-2 text-xs text-center text-gray-600">
-                        ${(mov.costo_total || 0).toFixed(2)}
+                        ${typeof mov.costo_total === 'number' ? mov.costo_total.toFixed(2) : '0.00'}
                       </td>
                     </tr>
                   ))}

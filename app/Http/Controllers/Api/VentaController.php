@@ -13,7 +13,9 @@ class VentaController extends Controller
 {
     public function index()
     {
-        return response()->json(Venta::with(['cliente', 'productoFinal'])->get());
+        return response()->json(Venta::with(['cliente', 'productoFinal'])
+            ->orderBy('created_at', 'desc')
+            ->get());
     }
 
     public function store(Request $request)

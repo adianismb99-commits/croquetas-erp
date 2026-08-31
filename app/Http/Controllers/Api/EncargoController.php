@@ -11,7 +11,9 @@ class EncargoController extends Controller
 {
     public function index()
     {
-        return response()->json(Encargo::with(['cliente', 'productoFinal'])->get());
+        return response()->json(Encargo::with(['cliente', 'productoFinal'])
+            ->orderBy('created_at', 'desc')
+            ->get());
     }
 
     public function store(Request $request)

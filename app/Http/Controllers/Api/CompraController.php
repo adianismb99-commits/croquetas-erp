@@ -34,7 +34,7 @@ class CompraController extends Controller
 
         $compras = $query->orderBy('fecha_compra', 'desc')->get();
 
-        return response()->json($compras);
+            return response()->json($query->orderBy('created_at', 'desc')->get());
     }
 
     public function store(Request $request)

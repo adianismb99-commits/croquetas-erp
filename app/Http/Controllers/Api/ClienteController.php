@@ -10,7 +10,7 @@ class ClienteController extends Controller
 {
     public function index()
     {
-        return response()->json(Cliente::all());
+        return response()->json(Cliente::orderBy('created_at', 'desc')->get());
     }
 
     public function store(Request $request)

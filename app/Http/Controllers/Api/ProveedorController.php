@@ -11,7 +11,7 @@ class ProveedorController extends Controller
 {
     public function index()
     {
-        return response()->json(Proveedor::all());
+        return response()->json(Proveedor::orderBy('created_at', 'desc')->get());
     }
 
     public function store(Request $request)

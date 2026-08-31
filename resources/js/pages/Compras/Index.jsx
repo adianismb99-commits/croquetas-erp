@@ -37,7 +37,7 @@ export default function ComprasIndex() {
     if (filtros.proveedor) params.append('proveedor', filtros.proveedor);
     if (filtros.insumo) params.append('insumo', filtros.insumo);
 
-    axios.get(`/api/compras?${params.toString()}`)
+    axios.post(`/api/compras?${params.toString()}`)
       .then(response => {
         setCompras(response.data);
         setLoading(false);

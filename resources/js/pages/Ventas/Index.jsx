@@ -216,10 +216,10 @@ export default function VentasIndex() {
                     </td>
                     <td className="px-4 py-4 text-sm text-center text-gray-600">{venta.cantidad}</td>
                     <td className="px-4 py-4 text-sm text-center text-gray-600">
-                      ${venta.precio_unitario.toFixed(2)}
+                      ${parseFloat(venta.precio_unitario || 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-4 text-sm text-center font-medium text-[#6B3FA0]">
-                      ${venta.total.toFixed(2)}
+                      ${parseFloat(venta.total || 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">
                       {getMetodoPagoLabel(venta.metodo_pago)}
@@ -326,7 +326,7 @@ export default function VentasIndex() {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.precio_unitario}
+                      value={formData.precio_unitario || ''}
                       onChange={(e) => setFormData({ ...formData, precio_unitario: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#6B3FA0] transition-all"
                       placeholder="0.00"

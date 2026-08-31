@@ -191,16 +191,16 @@ export default function ProduccionIndex() {
                       {new Date(produccion.fecha_hora).toLocaleString()}
                     </td>
                     <td className="px-4 py-4 text-sm text-center text-blue-600">
-                      ${(produccion.costo_teorico || 0).toFixed(2)}
+                      ${typeof produccion.costo_teorico === 'number' ? produccion.costo_teorico.toFixed(2) : '0.00'}
                     </td>
                     <td className="px-4 py-4 text-sm text-center text-[#6B3FA0]">
-                      ${(produccion.costo_real || 0).toFixed(2)}
+                      ${typeof produccion.costo_real === 'number' ? produccion.costo_real.toFixed(2) : '0.00'}
                     </td>
                     <td className={`px-4 py-4 text-sm text-center font-medium ${produccion.diferencia > 0 ? 'text-red-600' : produccion.diferencia < 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                      ${(produccion.diferencia || 0).toFixed(2)}
+                      ${typeof produccion.diferencia === 'number' ? produccion.diferencia.toFixed(2) : '0.00'}
                     </td>
                     <td className={`px-4 py-4 text-sm text-center font-medium ${produccion.porcentaje_variacion > 0 ? 'text-red-600' : produccion.porcentaje_variacion < 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                      {(produccion.porcentaje_variacion || 0).toFixed(2)}%
+                      {typeof produccion.porcentaje_variacion === 'number' ? produccion.porcentaje_variacion.toFixed(2) : '0.00'}%
                     </td>
                     <td className="px-4 py-4 text-center">
                       <button

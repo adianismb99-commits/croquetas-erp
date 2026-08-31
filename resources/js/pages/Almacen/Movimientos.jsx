@@ -232,13 +232,13 @@ export default function MovimientosIndex() {
                       {mov.salida > 0 ? `-${mov.salida}` : '-'}
                     </td>
                     <td className="px-4 py-3 text-sm text-center font-medium text-[#2D1B3D]">
-                      {mov.saldo}
+                      {parseFloat(mov.saldo || 0)}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
                       {mov.detalle || '-'}
                     </td>
                     <td className="px-4 py-3 text-sm text-center text-gray-600">
-                      ${mov.costo_total.toFixed(2)}
+                      ${typeof mov.costo_total === 'number' ? mov.costo_total.toFixed(2) : parseFloat(mov.costo_total || 0).toFixed(2)}
                     </td>
                   </tr>
                 ))}

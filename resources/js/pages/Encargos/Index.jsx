@@ -181,9 +181,9 @@ export default function EncargosIndex() {
                     <td className="px-4 py-4 text-sm text-gray-600">
                       {encargo.producto_final?.nombre || '-'}
                     </td>
-                    <td className="px-4 py-4 text-sm text-center text-gray-600">{encargo.cantidad}</td>
+                    <td className="px-4 py-4 text-sm text-center text-gray-600">{parseInt(encargo.cantidad || 0)}</td>
                     <td className="px-4 py-4 text-sm text-center text-gray-600">
-                      ${encargo.precio_acordado.toFixed(2)}
+                      ${parseFloat(encargo.precio_acordado || 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-4 text-sm text-center text-gray-500">
                       {new Date(encargo.fecha_entrega).toLocaleString()}
@@ -305,7 +305,7 @@ export default function EncargosIndex() {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.precio_acordado}
+                      value={formData.precio_acordado || ''}
                       onChange={(e) => setFormData({ ...formData, precio_acordado: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#6B3FA0] transition-all"
                       placeholder="0.00"

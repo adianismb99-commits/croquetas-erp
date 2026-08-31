@@ -11,7 +11,7 @@ class InsumoController extends Controller
 {
     public function index()
     {
-        return response()->json(Insumo::all());
+        return response()->json(Insumo::orderBy('created_at', 'desc')->get());
     }
 
     public function store(Request $request)

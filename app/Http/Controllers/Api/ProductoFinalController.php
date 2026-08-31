@@ -10,7 +10,7 @@ class ProductoFinalController extends Controller
 {
     public function index()
     {
-        return response()->json(ProductoFinal::all());
+        return response()->json(ProductoFinal::orderBy('created_at', 'desc')->get());
     }
 
     public function store(Request $request)

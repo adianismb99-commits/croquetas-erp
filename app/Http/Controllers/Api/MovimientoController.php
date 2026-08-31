@@ -28,7 +28,7 @@ class MovimientoController extends Controller
             $query->where('codigo', 'like', '%' . $request->codigo . '%');
         }
 
-        return response()->json($query->orderBy('fecha', 'desc')->get());
+            return response()->json($query->orderBy('created_at', 'desc')->get());
     }
 
     public function resumen()

@@ -12,7 +12,9 @@ class LoteInsumoController extends Controller
 {
     public function index()
     {
-        return response()->json(LoteInsumo::with(['insumo', 'proveedor'])->get());
+        return response()->json(LoteInsumo::with(['insumo', 'proveedor'])
+            ->orderBy('created_at', 'desc')
+            ->get());
     }
 
     public function store(Request $request)

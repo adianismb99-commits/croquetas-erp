@@ -11,7 +11,9 @@ class RecetaController extends Controller
     public function index()
     {
         // Agrupar recetas por producto
-        $recetas = Receta::with(['productoFinal', 'insumo'])->get();
+        $recetas = Receta::with(['productoFinal', 'insumo'])
+            ->orderBy('created_at', 'desc')
+            ->get();
         $agrupadas = $recetas->groupBy('producto_final_id')->map(function($items) {
             $producto = $items->first()->productoFinal;
             return [

@@ -20,8 +20,10 @@ class ProduccionController extends Controller
             'productoFinal',
             'produccionLotes.loteInsumo.insumo',
             'produccionLotes.loteInsumo.proveedor'
-        ])->get();
-
+        ])
+        ->orderBy('created_at', 'desc')  // <--- SOLO ESTA LÍNEA SE AÑADE
+        ->get();
+    
         foreach ($producciones as $produccion) {
             // Obtener recetas con código de insumo como clave
             $recetas = Receta::with('insumo')
@@ -31,7 +33,7 @@ class ProduccionController extends Controller
                     return $item->insumo->codigo;
                 })
                 ->toArray();
-
+    
             foreach ($produccion->produccionLotes as $pl) {
                 $insumo = $pl->loteInsumo->insumo;
                 $codigoInsumo = $insumo->codigo ?? null;
@@ -47,7 +49,7 @@ class ProduccionController extends Controller
                 }
             }
         }
-
+    
         return response()->json($producciones);
     }
 

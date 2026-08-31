@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import axios from 'axios';
 import {
@@ -28,6 +28,17 @@ ChartJS.register(
   LineElement,
   Filler
 );
+
+// ========== FUNCIÓN PARA FORMATEAR NÚMEROS DE FORMA SEGURA ==========
+const formatNumber = (value) => {
+  const num = parseFloat(value);
+  return isNaN(num) ? '0.00' : num.toFixed(2);
+};
+
+const formatInt = (value) => {
+  const num = parseInt(value);
+  return isNaN(num) ? 0 : num;
+};
 
 export default function ContabilidadIndex() {
   const [loading, setLoading] = useState(true);
@@ -102,7 +113,6 @@ export default function ContabilidadIndex() {
 
     axios.post(`/api/contabilidad/exportar?${params.toString()}`)
       .then(response => {
-        // Crear un elemento <a> para descargar el JSON (simulación de PDF)
         const dataStr = JSON.stringify(response.data, null, 2);
         const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
         const exportFileDefaultName = 'contabilidad_' + new Date().toISOString().slice(0,10) + '.json';
@@ -170,14 +180,13 @@ export default function ContabilidadIndex() {
   const ventasPorClienteArray = Array.isArray(graficos.ventas_por_cliente) 
     ? graficos.ventas_por_cliente 
     : Object.values(graficos.ventas_por_cliente || {});
-    console.log('VENTAS POR CLIENTE:', ventasPorClienteArray);
 
   // Gráficos
   const ventasPorDiaData = {
     labels: ventasPorDiaArray.map(v => v.fecha || ''),
     datasets: [{
       label: 'Ingresos ($)',
-      data: ventasPorDiaArray.map(v => v.total || 0),
+      data: ventasPorDiaArray.map(v => parseFloat(v.total || 0)),
       borderColor: moradoPalette.primary,
       backgroundColor: moradoPalette.primary + '33',
       fill: true,
@@ -190,13 +199,13 @@ export default function ContabilidadIndex() {
     datasets: [
       {
         label: 'Costo Teórico',
-        data: costoVsRealArray.map(v => v.costo_teorico || 0),
+        data: costoVsRealArray.map(v => parseFloat(v.costo_teorico || 0)),
         backgroundColor: moradoPalette.light,
         borderRadius: 4
       },
       {
         label: 'Costo Real',
-        data: costoVsRealArray.map(v => v.costo_real || 0),
+        data: costoVsRealArray.map(v => parseFloat(v.costo_real || 0)),
         backgroundColor: moradoPalette.primary,
         borderRadius: 4
       }
@@ -207,7 +216,7 @@ export default function ContabilidadIndex() {
     labels: rentabilidadProductosArray.map(v => v.nombre || 'Sin nombre'),
     datasets: [{
       label: 'Rentabilidad (%)',
-      data: rentabilidadProductosArray.map(v => v.rentabilidad || 0),
+      data: rentabilidadProductosArray.map(v => parseFloat(v.rentabilidad || 0)),
       backgroundColor: rentabilidadProductosArray.map(v => 
         v.rentabilidad > 0 ? moradoPalette.primary : moradoPalette.light
       ),
@@ -218,24 +227,14 @@ export default function ContabilidadIndex() {
   const distribucionCostosData = {
     labels: Object.keys(graficos.distribucion_costos || {}),
     datasets: [{
-      data: Object.values(graficos.distribucion_costos || {}),
+      data: Object.values(graficos.distribucion_costos || {}).map(v => parseFloat(v || 0)),
       backgroundColor: moradoPalette.gradient,
       borderWidth: 2,
       borderColor: '#fff'
     }]
   };
 
-  // Mapear tipos a nombres legibles
-  const tipoLabels = {
-    particular: 'Particular',
-    restaurante: 'Restaurante',
-    revendedor: 'Revendedor'
-  };
-
-  // Verificar qué datos tiene ventasPorClienteArray
-  console.log('Ventas por cliente:', ventasPorClienteArray);
-
-  // Tipos de cliente fijos en orden
+  // Tipos de cliente fijos
   const tiposFijos = ['particular', 'restaurante', 'revendedor'];
   const nombresFijos = {
     particular: 'Particular',
@@ -243,10 +242,9 @@ export default function ContabilidadIndex() {
     revendedor: 'Revendedor'
   };
 
-  // Extraer los datos en el orden fijo
   const datosFijos = tiposFijos.map(tipo => {
     const encontrado = ventasPorClienteArray.find(v => v.tipo === tipo);
-    return encontrado ? encontrado.total : 0;
+    return encontrado ? parseFloat(encontrado.total || 0) : 0;
   });
 
   const ventasPorClienteData = {
@@ -348,29 +346,29 @@ export default function ContabilidadIndex() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-4">
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-[#6B3FA0]">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Ingresos</p>
-            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">$ {(resumen.total_ingresos || 0).toFixed(2)}</p>
+            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">$ {formatNumber(resumen.total_ingresos)}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-[#9B6FC0]">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Costos</p>
-            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">$ {(resumen.total_costos || 0).toFixed(2)}</p>
+            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">$ {formatNumber(resumen.total_costos)}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-green-500">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Ganancia Bruta</p>
-            <p className="text-sm sm:text-xl font-bold text-green-600">$ {(resumen.ganancia_bruta || 0).toFixed(2)}</p>
+            <p className="text-sm sm:text-xl font-bold text-green-600">$ {formatNumber(resumen.ganancia_bruta)}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-[#2D1B3D]">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Rentabilidad</p>
             <p className={`text-sm sm:text-xl font-bold ${(resumen.porcentaje_rentabilidad || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {(resumen.porcentaje_rentabilidad || 0).toFixed(2)}%
+              {formatNumber(resumen.porcentaje_rentabilidad)}%
             </p>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-blue-500">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Margen x Unidad</p>
-            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">$ {(resumen.margen_por_unidad || 0).toFixed(2)}</p>
+            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">$ {formatNumber(resumen.margen_por_unidad)}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-orange-500">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Costo Promedio</p>
-            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">$ {(resumen.costo_promedio_unidad || 0).toFixed(2)}</p>
+            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">$ {formatNumber(resumen.costo_promedio_unidad)}</p>
           </div>
         </div>
 
@@ -378,15 +376,15 @@ export default function ContabilidadIndex() {
         <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border border-gray-100">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Total Ventas</p>
-            <p className="text-lg sm:text-2xl font-bold text-[#6B3FA0]">{resumen.total_ventas || 0}</p>
+            <p className="text-lg sm:text-2xl font-bold text-[#6B3FA0]">{formatInt(resumen.total_ventas)}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border border-gray-100">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Total Producciones</p>
-            <p className="text-lg sm:text-2xl font-bold text-[#9B6FC0]">{resumen.total_producciones || 0}</p>
+            <p className="text-lg sm:text-2xl font-bold text-[#9B6FC0]">{formatInt(resumen.total_producciones)}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border border-gray-100">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Total Compras</p>
-            <p className="text-lg sm:text-2xl font-bold text-[#C9A8D6]">{resumen.total_compras || 0}</p>
+            <p className="text-lg sm:text-2xl font-bold text-[#C9A8D6]">{formatInt(resumen.total_compras)}</p>
           </div>
         </div>
 
@@ -494,7 +492,7 @@ export default function ContabilidadIndex() {
                       <td className="px-3 py-2 text-xs sm:text-sm font-medium text-[#2D1B3D]">{cliente.nombre}</td>
                       <td className="px-3 py-2 text-xs sm:text-sm text-center text-gray-600">{cliente.tipo}</td>
                       <td className="px-3 py-2 text-xs sm:text-sm text-center text-gray-600">{cliente.total_compras}</td>
-                      <td className="px-3 py-2 text-xs sm:text-sm text-center text-green-600">${(cliente.total_gastado || 0).toFixed(2)}</td>
+                      <td className="px-3 py-2 text-xs sm:text-sm text-center text-green-600">$ {formatNumber(cliente.total_gastado)}</td>
                       <td className="px-3 py-2 text-xs sm:text-sm text-center text-gray-600">{cliente.num_compras}</td>
                     </tr>
                   ))
@@ -536,14 +534,14 @@ export default function ContabilidadIndex() {
                       <td className="px-3 py-2 text-xs sm:text-sm font-medium text-[#2D1B3D]">{item.nombre}</td>
                       <td className="px-3 py-2 text-xs sm:text-sm text-center text-gray-600">{item.producido}</td>
                       <td className="px-3 py-2 text-xs sm:text-sm text-center text-gray-600">{item.vendido}</td>
-                      <td className="px-3 py-2 text-xs sm:text-sm text-center text-gray-600">{(item.porcentaje_venta || 0).toFixed(1)}%</td>
-                      <td className="px-3 py-2 text-xs sm:text-sm text-center text-green-600">$ {(item.ingresos || 0).toFixed(2)}</td>
-                      <td className="px-3 py-2 text-xs sm:text-sm text-center text-red-600">$ {(item.costo || 0).toFixed(2)}</td>
+                      <td className="px-3 py-2 text-xs sm:text-sm text-center text-gray-600">{formatNumber(item.porcentaje_venta)}%</td>
+                      <td className="px-3 py-2 text-xs sm:text-sm text-center text-green-600">$ {formatNumber(item.ingresos)}</td>
+                      <td className="px-3 py-2 text-xs sm:text-sm text-center text-red-600">$ {formatNumber(item.costo)}</td>
                       <td className={`px-3 py-2 text-xs sm:text-sm text-center font-medium ${(item.ganancia || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        $ {(item.ganancia || 0).toFixed(2)}
+                        $ {formatNumber(item.ganancia)}
                       </td>
                       <td className={`px-3 py-2 text-xs sm:text-sm text-center font-medium ${(item.rentabilidad || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {(item.rentabilidad || 0).toFixed(2)}%
+                        {formatNumber(item.rentabilidad)}%
                       </td>
                     </tr>
                   ))
@@ -598,7 +596,7 @@ export default function ContabilidadIndex() {
                         {mov.cantidad} {mov.unidad}
                       </td>
                       <td className="px-3 py-2 text-xs sm:text-sm text-center text-gray-600">
-                        $ {(mov.costo_total || 0).toFixed(2)}
+                        $ {formatNumber(mov.costo_total)}
                       </td>
                     </tr>
                   ))

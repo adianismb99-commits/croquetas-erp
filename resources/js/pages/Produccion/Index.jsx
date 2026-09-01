@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import axios from 'axios';
 
+const formatNumber = (value) => {
+    if (value === null || value === undefined) return '0.00';
+    const num = typeof value === 'number' ? value : parseFloat(String(value).replace(/,/g, ''));
+    return isNaN(num) ? '0.00' : num.toFixed(2);
+};
+
 export default function ProduccionIndex() {
   const [producciones, setProducciones] = useState([]);
   const [productos, setProductos] = useState([]);
@@ -191,16 +197,16 @@ export default function ProduccionIndex() {
                       {new Date(produccion.fecha_hora).toLocaleString()}
                     </td>
                     <td className="px-4 py-4 text-sm text-center text-blue-600">
-                      ${typeof produccion.costo_teorico === 'number' ? produccion.costo_teorico.toFixed(2) : '0.00'}
+                      ${formatNumber(produccion.costo_teorico)}
                     </td>
                     <td className="px-4 py-4 text-sm text-center text-[#6B3FA0]">
-                      ${typeof produccion.costo_real === 'number' ? produccion.costo_real.toFixed(2) : '0.00'}
+                      ${formatNumber(produccion.costo_real)}
                     </td>
                     <td className={`px-4 py-4 text-sm text-center font-medium ${produccion.diferencia > 0 ? 'text-red-600' : produccion.diferencia < 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                      ${typeof produccion.diferencia === 'number' ? produccion.diferencia.toFixed(2) : '0.00'}
+                      ${formatNumber(produccion.diferencia)}
                     </td>
                     <td className={`px-4 py-4 text-sm text-center font-medium ${produccion.porcentaje_variacion > 0 ? 'text-red-600' : produccion.porcentaje_variacion < 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                      {typeof produccion.porcentaje_variacion === 'number' ? produccion.porcentaje_variacion.toFixed(2) : '0.00'}%
+                      {formatNumber(produccion.porcentaje_variacion)}%
                     </td>
                     <td className="px-4 py-4 text-center">
                       <button
@@ -411,13 +417,13 @@ export default function ProduccionIndex() {
                             {insumo?.unidad || '-'}
                           </td>
                           <td className="px-4 py-3 text-sm text-center text-[#6B3FA0] font-medium">
-                            {real.toFixed(2)}
+                            {formatNumber(real)}
                           </td>
                           <td className="px-4 py-3 text-sm text-center text-gray-600">
-                            ${costoUnitario.toFixed(2)}
+                            ${formatNumber(costoUnitario)}
                           </td>
                           <td className="px-4 py-3 text-sm text-center text-gray-600">
-                            ${costoTotal.toFixed(2)}
+                            ${formatNumber(costoTotal)}
                           </td>
                         </tr>
                       );
@@ -436,7 +442,7 @@ export default function ProduccionIndex() {
                         Costo real total:
                       </td>
                       <td className="px-4 py-2 text-center text-sm font-bold text-[#6B3FA0]">
-                        ${(produccionSeleccionada.costo_real || 0).toFixed(2)}
+                        ${formatNumber(produccionSeleccionada.costo_real)}
                       </td>
                     </tr>
                   </tfoot>

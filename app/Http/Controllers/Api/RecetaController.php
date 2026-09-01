@@ -10,14 +10,16 @@ class RecetaController extends Controller
 {
     public function index()
     {
-        // Agrupar recetas por producto
         $recetas = Receta::with(['productoFinal', 'insumo'])
             ->orderBy('created_at', 'desc')
             ->get();
-        $agrupadas = $recetas->groupBy('producto_final_id')->map(function($items) {
-            $producto = $items->first()->productoFinal;
+    
+        // Agrupar por código de receta (cada receta tiene su propio código)
+        $agrupadas = $recetas->groupBy('codigo')->map(function($items) {
+            $primera = $items->first();
             return [
-                'producto' => $producto,
+                'codigo' => $primera->codigo,
+                'producto' => $primera->productoFinal,
                 'insumos' => $items->map(function($item) {
                     return [
                         'id' => $item->id,
@@ -27,8 +29,9 @@ class RecetaController extends Controller
                     ];
                 })
             ];
-        });
-        return response()->json($agrupadas->values());
+        })->values();
+    
+        return response()->json($agrupadas);
     }
 
     public function store(Request $request)
@@ -41,10 +44,25 @@ class RecetaController extends Controller
             'unidades_base' => 'required|integer|min:1'
         ]);
     
-        // Crear NUEVAS recetas (no actualizar)
+        $producto = ProductoFinal::find($validated['producto_final_id']);
+        $prefijo = strtoupper(substr($producto->nombre, 0, 3));
+        
         $recetasCreadas = [];
         foreach ($validated['insumos'] as $insumoData) {
+            // Generar código único para cada receta
+            $ultimo = Receta::where('codigo', 'like', $prefijo . '-%')
+                ->orderBy('codigo', 'desc')
+                ->first();
+            
+            if ($ultimo && preg_match('/' . $prefijo . '-(\d+)/', $ultimo->codigo, $matches)) {
+                $numero = intval($matches[1]) + 1;
+            } else {
+                $numero = 1;
+            }
+            $codigo = $prefijo . '-' . str_pad($numero, 3, '0', STR_PAD_LEFT);
+    
             $receta = Receta::create([
+                'codigo' => $codigo,
                 'producto_final_id' => $validated['producto_final_id'],
                 'insumo_id' => $insumoData['insumo_id'],
                 'cantidad_teorica' => $insumoData['cantidad_teorica'],

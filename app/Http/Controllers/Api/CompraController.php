@@ -154,4 +154,14 @@ class CompraController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+    public function destroy($id)
+    {
+        try {
+            $compra = LoteInsumo::findOrFail($id);
+            $compra->delete();
+            return response()->json(['message' => 'Compra eliminada'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 }

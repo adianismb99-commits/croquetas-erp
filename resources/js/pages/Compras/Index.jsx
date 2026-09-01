@@ -154,7 +154,7 @@ export default function ComprasIndex() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-[#6B3FA0]">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Total compras</p>
-            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">$ {(resumen.total_compras || 0).toFixed(2)}</p>
+            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">$ ${parseFloat(resumen.total_compras || 0).toFixed(2)}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-[#9B6FC0]">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Total insumos</p>
@@ -267,10 +267,10 @@ export default function ComprasIndex() {
                       {compra.cantidad} {compra.insumo?.unidad}
                     </td>
                     <td className="px-4 py-4 text-sm text-center text-gray-600">
-                      ${(compra.costo_unitario || 0).toFixed(2)}
+                      ${parseFloat(compra.costo_unitario || 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-4 text-sm text-center font-medium text-[#6B3FA0]">
-                      ${(compra.precio_total || 0).toFixed(2)}
+                      ${parseFloat(compra.precio_total || 0).toFixed(2)}
                     </td>
                   </tr>
                 ))}

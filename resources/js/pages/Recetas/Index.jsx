@@ -68,20 +68,30 @@ export default function RecetasIndex() {
     e.preventDefault();
     
     const insumosValidos = formData.insumos.every(
-      insumo => insumo.insumo_id && insumo.cantidad_teorica
+        insumo => insumo.insumo_id && insumo.cantidad_teorica
     );
 
     if (!insumosValidos) {
-      alert('Todos los insumos deben tener cantidad');
-      return;
+        alert('Todos los insumos deben tener cantidad');
+        return;
     }
 
     const url = editando 
-      ? `/api/recetas/${editando.producto.id}` 
-      : '/api/recetas';
+        ? `/api/recetas/${editando.producto.id}` 
+        : '/api/recetas';
     const method = editando ? 'put' : 'post';
 
-    axios[method](url, formData)
+    // Estructurar los datos correctamente
+    const dataToSend = {
+        producto_final_id: formData.producto_final_id,
+        insumos: formData.insumos.map(insumo => ({
+            insumo_id: insumo.insumo_id,
+            cantidad_teorica: parseFloat(insumo.cantidad_teorica) || 0
+        })),
+        unidades_base: parseInt(formData.unidades_base) || 100
+    };
+
+    axios[method](url, dataToSend)
       .then(() => {
         fetchRecetas();
         setShowModal(false);
@@ -92,9 +102,11 @@ export default function RecetasIndex() {
           unidades_base: '100'
         });
       })
-      .catch(error => console.error('Error:', error));
+      .catch(error => {
+        console.error('Error:', error.response?.data || error.message);
+        alert('❌ Error al guardar la receta');
+      });
   };
-
   const handleEdit = (receta) => {
     if (!receta || !receta.producto || !receta.producto.id) {
       console.error('Datos de receta inválidos:', receta);

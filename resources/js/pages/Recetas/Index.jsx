@@ -77,7 +77,7 @@ export default function RecetasIndex() {
     }
 
     const url = editando 
-        ? `/api/recetas/${editando.producto.id}` 
+        ? `/api/recetas/${editando.id}`
         : '/api/recetas';
     const method = editando ? 'put' : 'post';
 
@@ -108,6 +108,7 @@ export default function RecetasIndex() {
       });
   };
   const handleEdit = (receta) => {
+    setEditando(receta);
     if (!receta || !receta.producto || !receta.producto.id) {
       console.error('Datos de receta inválidos:', receta);
       return;

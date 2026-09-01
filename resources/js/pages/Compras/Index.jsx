@@ -2,6 +2,13 @@ import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import axios from 'axios';
 
+// Función para formatear números de forma segura
+const formatNumber = (value) => {
+    if (value === null || value === undefined) return '0.00';
+    const num = typeof value === 'number' ? value : parseFloat(String(value).replace(/,/g, ''));
+    return isNaN(num) ? '0.00' : num.toFixed(2);
+};
+
 export default function ComprasIndex() {
   const [compras, setCompras] = useState([]);
   const [insumos, setInsumos] = useState([]);
@@ -90,7 +97,7 @@ export default function ComprasIndex() {
         alert('✅ Compra registrada correctamente');
       })
       .catch(error => {
-        console.error('Error:', error);
+        console.error('Error:', error.response?.data || error.message);
         alert('❌ Error al registrar la compra');
       });
   };
@@ -154,15 +161,15 @@ export default function ComprasIndex() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-[#6B3FA0]">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Total compras</p>
-            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">$ ${parseFloat(resumen.total_compras || 0).toFixed(2)}</p>
+            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">$ {formatNumber(resumen.total_compras)}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-[#9B6FC0]">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Total insumos</p>
-            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">{resumen.total_insumos || 0}</p>
+            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">{formatNumber(resumen.total_insumos)}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-green-500">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Compras este mes</p>
-            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">{resumen.compras_este_mes || 0}</p>
+            <p className="text-sm sm:text-xl font-bold text-[#2D1B3D]">{formatNumber(resumen.compras_este_mes)}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-[#2D1B3D]">
             <p className="text-[10px] sm:text-xs text-gray-500 uppercase">Proveedor más usado</p>
@@ -267,10 +274,10 @@ export default function ComprasIndex() {
                       {compra.cantidad} {compra.insumo?.unidad}
                     </td>
                     <td className="px-4 py-4 text-sm text-center text-gray-600">
-                      ${parseFloat(compra.costo_unitario || 0).toFixed(2)}
+                      $ {formatNumber(compra.costo_unitario)}
                     </td>
                     <td className="px-4 py-4 text-sm text-center font-medium text-[#6B3FA0]">
-                      ${parseFloat(compra.precio_total || 0).toFixed(2)}
+                      $ {formatNumber(compra.precio_total)}
                     </td>
                   </tr>
                 ))}
@@ -317,7 +324,7 @@ export default function ComprasIndex() {
                       <td className="px-4 py-2 text-sm font-medium text-[#2D1B3D]">{item.proveedor}</td>
                       <td className="px-4 py-2 text-sm text-center text-gray-600">{item.total_compras}</td>
                       <td className="px-4 py-2 text-sm text-center font-medium text-[#6B3FA0]">
-                        ${(item.total_gastado || 0).toFixed(2)}
+                        $ {formatNumber(item.total_gastado)}
                       </td>
                     </tr>
                   ))

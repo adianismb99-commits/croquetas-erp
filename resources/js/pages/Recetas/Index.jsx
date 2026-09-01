@@ -67,6 +67,7 @@ export default function RecetasIndex() {
   const handleSubmit = (e) => {
     e.preventDefault();
     
+    // Validar que haya insumos
     const insumosValidos = formData.insumos.every(
         insumo => insumo.insumo_id && insumo.cantidad_teorica
     );
@@ -76,22 +77,40 @@ export default function RecetasIndex() {
         return;
     }
 
+    // Validar que el producto esté seleccionado
+    if (!formData.producto_final_id) {
+        alert('Debes seleccionar un producto');
+        return;
+    }
+
     const url = editando 
         ? `/api/recetas/${editando.id}`
         : '/api/recetas';
     const method = editando ? 'put' : 'post';
 
+    // Estructurar los datos correctamente
     const dataToSend = {
         producto_final_id: formData.producto_final_id,
-        insumos: formData.insumos.map(insumo => ({
-            insumo_id: insumo.insumo_id,
-            cantidad_teorica: parseFloat(insumo.cantidad_teorica) || 0
-        })),
+        insumos: formData.insumos
+            .filter(insumo => insumo.insumo_id && insumo.cantidad_teorica)
+            .map(insumo => ({
+                insumo_id: insumo.insumo_id,
+                cantidad_teorica: parseFloat(insumo.cantidad_teorica) || 0
+            })),
         unidades_base: parseInt(formData.unidades_base) || 100
     };
 
+    // Validar que haya al menos un insumo
+    if (dataToSend.insumos.length === 0) {
+        alert('Debes agregar al menos un insumo');
+        return;
+    }
+
+    console.log('📦 Enviando datos:', dataToSend); // Para depurar
+
     axios[method](url, dataToSend)
-      .then(() => {
+      .then((response) => {
+        console.log('✅ Receta guardada:', response.data);
         fetchRecetas();
         setShowModal(false);
         setEditando(null);
@@ -100,13 +119,13 @@ export default function RecetasIndex() {
           insumos: [{ insumo_id: '', cantidad_teorica: '' }],
           unidades_base: '100'
         });
+        alert('✅ Receta guardada correctamente');
       })
       .catch(error => {
-        console.error('Error:', error.response?.data || error.message);
-        alert('❌ Error al guardar la receta');
+        console.error('❌ Error:', error.response?.data || error.message);
+        alert('❌ Error al guardar la receta: ' + (error.response?.data?.error || error.message));
       });
   };
-
   const handleEdit = (receta) => {
     if (!receta || !receta.id) {
         console.error('Datos de receta inválidos:', receta);

@@ -12,6 +12,7 @@ class Receta extends Model
     protected $table = 'recetas';
 
     protected $fillable = [
+        'codigo',
         'producto_final_id',
         'insumo_id',
         'cantidad_teorica',

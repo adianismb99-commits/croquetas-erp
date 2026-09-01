@@ -101,7 +101,21 @@ export default function ComprasIndex() {
         alert('❌ Error al registrar la compra');
       });
   };
-
+    
+  const handleDelete = (id) => {
+    if (confirm('¿Estás seguro de eliminar esta compra? Esta acción no se puede deshacer.')) {
+        axios.delete(`/api/compras/${id}`)
+            .then(() => {
+                fetchCompras();
+                fetchResumen();
+                alert('✅ Compra eliminada correctamente');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Error al eliminar la compra');
+            });
+    }
+  };
   const handleFiltroChange = (e) => {
     setFiltros({ ...filtros, [e.target.name]: e.target.value });
   };
@@ -253,6 +267,7 @@ export default function ComprasIndex() {
                   <th className="px-4 py-3 text-center text-sm font-semibold text-[#2D1B3D]">Cantidad</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-[#2D1B3D]">Costo unit.</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-[#2D1B3D]">Total</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-[#2D1B3D]">Acciones</th>  
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -278,6 +293,14 @@ export default function ComprasIndex() {
                     </td>
                     <td className="px-4 py-4 text-sm text-center font-medium text-[#6B3FA0]">
                       $ {formatNumber(compra.precio_total)}
+                    </td>    
+                    <td className="px-4 py-4 text-center">
+                        <button
+                            onClick={() => handleDelete(compra.id)}
+                            className="text-red-600 hover:text-red-800 text-sm font-medium transition-colors min-h-[44px] min-w-[44px]"
+                        >
+                            🗑️ Eliminar
+                        </button>                        
                     </td>
                   </tr>
                 ))}

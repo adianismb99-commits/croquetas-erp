@@ -18,10 +18,13 @@ class ProduccionController extends Controller
     {
         $producciones = Produccion::with([
             'productoFinal',
-            'produccionLotes.loteInsumo.insumo',
-            'produccionLotes.loteInsumo.proveedor'
+            'produccionLotes' => function($query) {
+                $query->with(['loteInsumo' => function($q) {
+                    $q->withTrashed();
+                }, 'loteInsumo.insumo']);
+            }
         ])
-        ->orderBy('created_at', 'desc')  // <--- SOLO ESTA LÍNEA SE AÑADE
+        ->orderBy('created_at', 'desc')
         ->get();
     
         foreach ($producciones as $produccion) {
@@ -196,10 +199,13 @@ class ProduccionController extends Controller
     {
         $produccion = Produccion::with([
             'productoFinal',
-            'produccionLotes.loteInsumo.insumo',
-            'produccionLotes.loteInsumo.proveedor'
+            'produccionLotes' => function($query) {
+                $query->with(['loteInsumo' => function($q) {
+                    $q->withTrashed(); // Incluir lotes eliminados
+                }, 'loteInsumo.insumo']);
+            }
         ])->findOrFail($id);
-
+    
         // Obtener recetas con código de insumo como clave
         $recetas = Receta::with('insumo')
             ->where('producto_final_id', $produccion->producto_final_id)
@@ -208,10 +214,10 @@ class ProduccionController extends Controller
                 return $item->insumo->codigo;
             })
             ->toArray();
-
+    
         foreach ($produccion->produccionLotes as $pl) {
-            $insumo = $pl->loteInsumo->insumo;
-            $codigoInsumo = $insumo->codigo ?? null;
+            $insumo = $pl->loteInsumo?->insumo;
+            $codigoInsumo = $insumo?->codigo ?? null;
             
             if ($codigoInsumo && isset($recetas[$codigoInsumo])) {
                 $receta = $recetas[$codigoInsumo];
@@ -223,7 +229,7 @@ class ProduccionController extends Controller
                 $pl->unidades_base = 0;
             }
         }
-
+    
         return response()->json($produccion);
     }
 

@@ -50,12 +50,15 @@ class RecetaController extends Controller
                 'insumos.*.cantidad_teorica' => 'required|numeric|min:0.01',
                 'unidades_base' => 'required|integer|min:1'
             ]);
-
-            // Verificar que el producto existe
+    
+            // Obtener el producto para el prefijo
             $producto = ProductoFinal::findOrFail($validated['producto_final_id']);
-            $prefijo = strtoupper(substr($producto->nombre, 0, 3));
+            $prefijoProducto = strtoupper(substr($producto->nombre, 0, 3));
             
-            // Generar un solo código para TODOS los insumos de esta receta
+            // Formato: CPO-REC-001
+            $prefijo = $prefijoProducto . '-REC';
+            
+            // Generar código único
             $ultimo = Receta::where('codigo', 'like', $prefijo . '-%')
                 ->orderBy('codigo', 'desc')
                 ->first();
@@ -66,8 +69,13 @@ class RecetaController extends Controller
                 $numero = 1;
             }
             $codigo = $prefijo . '-' . str_pad($numero, 3, '0', STR_PAD_LEFT);
-
-            // Crear una receta para CADA insumo con el MISMO código
+    
+            // Verificar que no exista
+            while (Receta::where('codigo', $codigo)->exists()) {
+                $numero++;
+                $codigo = $prefijo . '-' . str_pad($numero, 3, '0', STR_PAD_LEFT);
+            }
+    
             $recetasCreadas = [];
             foreach ($validated['insumos'] as $insumoData) {
                 $receta = Receta::create([
@@ -79,13 +87,12 @@ class RecetaController extends Controller
                 ]);
                 $recetasCreadas[] = $receta->load(['productoFinal', 'insumo']);
             }
-
+    
             return response()->json($recetasCreadas, 201);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-
     public function show($id)
     {
         try {

@@ -129,19 +129,25 @@ export default function RecetasIndex() {
   };
 
   const handleDelete = (receta) => {
-    const recetaId = receta?.insumos?.[0]?.id;
-    if (!recetaId) {
-      alert('No se puede eliminar esta receta');
-      return;
+    // Verificar que la receta tenga un ID válido
+    if (!receta || !receta.id) {
+        alert('No se puede eliminar esta receta (ID no encontrado)');
+        return;
     }
     
     if (confirm('¿Estás seguro de eliminar esta receta?')) {
-      axios.delete(`/api/recetas/${recetaId}`)
-        .then(() => fetchRecetas())
-        .catch(error => console.error('Error:', error));
+        axios.delete(`/api/recetas/${receta.id}`)
+            .then(() => {
+                fetchRecetas();
+                alert('✅ Receta eliminada correctamente');
+            })
+            .catch(error => {
+                console.error('Error:', error.response?.data || error.message);
+                alert('❌ Error al eliminar la receta');
+            });
     }
   };
-
+    
   if (loading) {
     return (
       <AuthenticatedLayout>

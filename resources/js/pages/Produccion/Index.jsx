@@ -12,12 +12,14 @@ export default function ProduccionIndex() {
   const [producciones, setProducciones] = useState([]);
   const [productos, setProductos] = useState([]);
   const [lotesDisponibles, setLotesDisponibles] = useState([]);
+  const [recetasDisponibles, setRecetasDisponibles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showInsumosModal, setShowInsumosModal] = useState(false);
   const [produccionSeleccionada, setProduccionSeleccionada] = useState(null);
   const [formData, setFormData] = useState({
     producto_final_id: '',
+    receta_codigo: '',
     cantidad: '',
     fecha_hora: new Date().toISOString().slice(0, 16),
     lotes: []
@@ -50,30 +52,48 @@ export default function ProduccionIndex() {
       .catch(error => console.error('Error:', error));
   };
 
+  const fetchRecetas = () => {
+    axios.get('/api/recetas')
+      .then(response => {
+        setRecetasDisponibles(response.data);
+      })
+      .catch(error => console.error('Error:', error));
+  };
+
   useEffect(() => {
     fetchProducciones();
     fetchProductos();
     fetchLotesDisponibles();
+    fetchRecetas();
   }, []);
 
   const handleProductoChange = (productoId) => {
-    setFormData({ ...formData, producto_final_id: productoId, lotes: [] });
+    setFormData({ 
+      ...formData, 
+      producto_final_id: productoId, 
+      receta_codigo: '',
+      lotes: [] 
+    });
+  };
+
+  const handleRecetaChange = (codigo) => {
+    setFormData({ ...formData, receta_codigo: codigo, lotes: [] });
     
-    if (productoId) {
-      axios.get(`/api/recetas/producto/${productoId}`)
-        .then(response => {
-          const receta = response.data;
-          const lotesIniciales = receta.map(item => ({
-            insumo_id: item.insumo_id,
-            insumo_nombre: item.insumo.nombre,
-            cantidad_teorica: item.cantidad_teorica,
-            unidades_base: item.unidades_base,
-            lote_insumo_id: '',
-            cantidad_usada: ''
-          }));
-          setFormData(prev => ({ ...prev, lotes: lotesIniciales }));
-        })
-        .catch(error => console.error('Error:', error));
+    if (codigo) {
+      // Buscar la receta seleccionada
+      const receta = recetasDisponibles.find(r => r.codigo === codigo);
+      
+      if (receta && receta.insumos) {
+        const lotesIniciales = receta.insumos.map(item => ({
+          insumo_id: item.insumo.id,
+          insumo_nombre: item.insumo.nombre,
+          cantidad_teorica: item.cantidad_teorica,
+          unidades_base: receta.unidades_base || 100,
+          lote_insumo_id: '',
+          cantidad_usada: ''
+        }));
+        setFormData(prev => ({ ...prev, lotes: lotesIniciales }));
+      }
     }
   };
 
@@ -85,6 +105,11 @@ export default function ProduccionIndex() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    if (!formData.receta_codigo) {
+      alert('Debes seleccionar una receta');
+      return;
+    }
     
     const lotesValidos = formData.lotes.every(
       lote => lote.lote_insumo_id && lote.cantidad_usada
@@ -111,12 +136,17 @@ export default function ProduccionIndex() {
         setShowModal(false);
         setFormData({
           producto_final_id: '',
+          receta_codigo: '',
           cantidad: '',
           fecha_hora: new Date().toISOString().slice(0, 16),
           lotes: []
         });
+        alert('✅ Producción registrada correctamente');
       })
-      .catch(error => console.error('Error:', error));
+      .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Error al registrar la producción');
+      });
   };
 
   const handleDelete = (id) => {
@@ -155,6 +185,7 @@ export default function ProduccionIndex() {
               setShowModal(true);
               setFormData({
                 producto_final_id: '',
+                receta_codigo: '',
                 cantidad: '',
                 fecha_hora: new Date().toISOString().slice(0, 16),
                 lotes: []
@@ -268,6 +299,28 @@ export default function ProduccionIndex() {
                     </select>
                   </div>
 
+                  {/* Selector de Receta */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Receta <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.receta_codigo}
+                      onChange={(e) => handleRecetaChange(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#6B3FA0] transition-all"
+                      required
+                    >
+                      <option value="">Seleccionar receta...</option>
+                      {recetasDisponibles
+                        .filter(r => r.producto?.id === formData.producto_final_id)
+                        .map((receta) => (
+                          <option key={receta.codigo} value={receta.codigo}>
+                            {receta.codigo} - {receta.producto?.nombre} ({receta.insumos?.length} insumos)
+                          </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Cantidad producida <span className="text-red-500">*</span>
@@ -355,6 +408,7 @@ export default function ProduccionIndex() {
                       setShowModal(false);
                       setFormData({
                         producto_final_id: '',
+                        receta_codigo: '',
                         cantidad: '',
                         fecha_hora: new Date().toISOString().slice(0, 16),
                         lotes: []

@@ -40,7 +40,8 @@ class RecetaController extends Controller
             'insumos.*.cantidad_teorica' => 'required|numeric|min:0.01',
             'unidades_base' => 'required|integer|min:1'
         ]);
-
+    
+        // Crear NUEVAS recetas (no actualizar)
         $recetasCreadas = [];
         foreach ($validated['insumos'] as $insumoData) {
             $receta = Receta::create([
@@ -51,10 +52,9 @@ class RecetaController extends Controller
             ]);
             $recetasCreadas[] = $receta->load(['productoFinal', 'insumo']);
         }
-
+    
         return response()->json($recetasCreadas, 201);
     }
-
     public function show($id)
     {
         // Mostrar todas las recetas de un producto
@@ -81,35 +81,16 @@ class RecetaController extends Controller
 
     public function update(Request $request, $id)
     {
-        // Si el ID es un producto ID, actualizar todas las recetas del producto
-        $recetas = Receta::where('producto_final_id', $id)->get();
+        $receta = Receta::findOrFail($id);
         
-        if ($recetas->isEmpty()) {
-            return response()->json(['message' => 'No hay recetas para este producto'], 404);
-        }
-
         $validated = $request->validate([
-            'insumos' => 'required|array|min:1',
-            'insumos.*.insumo_id' => 'required|exists:insumos,id',
-            'insumos.*.cantidad_teorica' => 'required|numeric|min:0.01',
-            'unidades_base' => 'required|integer|min:1'
+            'insumo_id' => 'sometimes|exists:insumos,id',
+            'cantidad_teorica' => 'sometimes|numeric|min:0.01',
+            'unidades_base' => 'sometimes|integer|min:1'
         ]);
-
-        // Eliminar recetas existentes y crear nuevas
-        Receta::where('producto_final_id', $id)->delete();
-
-        $recetasCreadas = [];
-        foreach ($validated['insumos'] as $insumoData) {
-            $receta = Receta::create([
-                'producto_final_id' => $id,
-                'insumo_id' => $insumoData['insumo_id'],
-                'cantidad_teorica' => $insumoData['cantidad_teorica'],
-                'unidades_base' => $validated['unidades_base']
-            ]);
-            $recetasCreadas[] = $receta->load(['productoFinal', 'insumo']);
-        }
-
-        return response()->json($recetasCreadas, 200);
+    
+        $receta->update($validated);
+        return response()->json($receta->load(['productoFinal', 'insumo']));
     }
 
     public function destroy($id)

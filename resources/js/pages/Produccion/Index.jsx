@@ -80,7 +80,6 @@ export default function ProduccionIndex() {
     setFormData({ ...formData, receta_codigo: codigo, lotes: [] });
     
     if (codigo) {
-      // Buscar la receta seleccionada
       const receta = recetasDisponibles.find(r => r.codigo === codigo);
       
       if (receta && receta.insumos) {
@@ -90,7 +89,7 @@ export default function ProduccionIndex() {
           cantidad_teorica: item.cantidad_teorica,
           unidades_base: receta.unidades_base || 100,
           lote_insumo_id: '',
-          cantidad_usada: ''
+          cantidad_usada_real: ''
         }));
         setFormData(prev => ({ ...prev, lotes: lotesIniciales }));
       }
@@ -112,7 +111,7 @@ export default function ProduccionIndex() {
     }
     
     const lotesValidos = formData.lotes.every(
-      lote => lote.lote_insumo_id && lote.cantidad_usada
+      lote => lote.lote_insumo_id && lote.cantidad_usada_real
     );
 
     if (!lotesValidos) {
@@ -126,7 +125,7 @@ export default function ProduccionIndex() {
       fecha_hora: formData.fecha_hora,
       lotes: formData.lotes.map(lote => ({
         lote_insumo_id: lote.lote_insumo_id,
-        cantidad_usada: lote.cantidad_usada
+        cantidad_usada: parseFloat(lote.cantidad_usada_real) || 0
       }))
     };
 
@@ -354,48 +353,64 @@ export default function ProduccionIndex() {
                         Insumos utilizados <span className="text-red-500">*</span>
                       </label>
                       <div className="space-y-3">
-                        {formData.lotes.map((lote, index) => (
-                          <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                            <p className="text-sm font-medium text-[#2D1B3D] mb-2">
-                              {lote.insumo_nombre || 'Insumo'} 
-                              <span className="text-xs text-gray-400 ml-2">
-                                (Teórico: {lote.cantidad_teorica} para {lote.unidades_base} unidades)
-                              </span>
-                            </p>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="block text-xs text-gray-600 mb-1">Lote</label>
-                                <select
-                                  value={lote.lote_insumo_id}
-                                  onChange={(e) => handleLoteChange(index, 'lote_insumo_id', e.target.value)}
-                                  className="w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B3FA0]"
-                                  required
-                                >
-                                  <option value="">Seleccionar...</option>
-                                  {lotesDisponibles
-                                    .filter(l => l.insumo_id === lote.insumo_id)
-                                    .map(l => (
-                                      <option key={l.id} value={l.id}>
-                                        {l.codigo} - Stock: {l.stock_restante} {l.insumo?.unidad}
-                                      </option>
-                                    ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-xs text-gray-600 mb-1">Cantidad usada</label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={lote.cantidad_usada}
-                                  onChange={(e) => handleLoteChange(index, 'cantidad_usada', e.target.value)}
-                                  className="w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B3FA0]"
-                                  placeholder="Cantidad"
-                                  required
-                                />
+                        {formData.lotes.map((lote, index) => {
+                          const cantidadTeorica = formData.cantidad 
+                              ? (lote.cantidad_teorica / lote.unidades_base) * formData.cantidad 
+                              : 0;
+                          
+                          return (
+                            <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                              <p className="text-sm font-medium text-[#2D1B3D] mb-2">
+                                {lote.insumo_nombre || 'Insumo'} 
+                                <span className="text-xs text-gray-400 ml-2">
+                                  (Teórico: {lote.cantidad_teorica} para {lote.unidades_base} unidades)
+                                </span>
+                              </p>
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <label className="block text-xs text-gray-600 mb-1">Lote</label>
+                                  <select
+                                    value={lote.lote_insumo_id}
+                                    onChange={(e) => handleLoteChange(index, 'lote_insumo_id', e.target.value)}
+                                    className="w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B3FA0]"
+                                    required
+                                  >
+                                    <option value="">Seleccionar...</option>
+                                    {lotesDisponibles
+                                      .filter(l => l.insumo_id === lote.insumo_id)
+                                      .map(l => (
+                                        <option key={l.id} value={l.id}>
+                                          {l.codigo} - Stock: {l.stock_restante} {l.insumo?.unidad}
+                                        </option>
+                                      ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-gray-600 mb-1">Teórico</label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={cantidadTeorica.toFixed(2)}
+                                    className="w-full border border-gray-300 rounded-lg px-2 py-1 text-sm bg-gray-100 text-gray-500"
+                                    disabled
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-gray-600 mb-1">Real</label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={lote.cantidad_usada_real}
+                                    onChange={(e) => handleLoteChange(index, 'cantidad_usada_real', e.target.value)}
+                                    className="w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B3FA0]"
+                                    placeholder="Cantidad"
+                                    required
+                                  />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}

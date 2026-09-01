@@ -110,7 +110,6 @@ class RecetaController extends Controller
         $receta->update($validated);
         return response()->json($receta->load(['productoFinal', 'insumo']));
     }
-
     public function destroy($id)
     {
         $receta = Receta::findOrFail($id);

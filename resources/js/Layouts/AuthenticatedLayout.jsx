@@ -21,12 +21,15 @@ import {
 
 export default function AuthenticatedLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [expandedMenus, setExpandedMenus] = useState({});
+  const [expandedMenus, setExpandedMenus] = useState({
+    'Almacén': true,  // El submenú de Almacén siempre abierto por defecto
+  });
   const [notificacionesExpanded, setNotificacionesExpanded] = useState(false);
   const { url } = usePage();
 
   useEffect(() => {
     setSidebarOpen(false);
+    // No cerramos expandedMenus, para que el submenú se mantenga abierto
   }, [url]);
 
   const toggleMenu = (name) => {

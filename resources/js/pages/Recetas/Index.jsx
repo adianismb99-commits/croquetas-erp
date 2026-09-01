@@ -180,6 +180,7 @@ export default function RecetasIndex() {
             <table className="w-full min-w-[500px]">
               <thead className="bg-[#F5EEF9]">
                 <tr>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-[#2D1B3D]">Código</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-[#2D1B3D]">Producto</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-[#2D1B3D]">Insumos</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-[#2D1B3D]">Base</th>
@@ -189,6 +190,9 @@ export default function RecetasIndex() {
               <tbody className="divide-y divide-gray-200">
                 {recetas.map((receta, index) => (
                   <tr key={index} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 text-sm font-mono font-medium text-[#6B3FA0]">
+                        {receta.codigo}
+                    </td>
                     <td className="px-6 py-4 text-sm font-medium text-[#2D1B3D]">
                       {receta.producto?.nombre || '-'}
                     </td>

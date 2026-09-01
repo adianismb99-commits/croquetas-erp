@@ -81,8 +81,8 @@ Route::prefix('contabilidad')->group(function () {
 });
 // Compras
 Route::prefix('compras')->group(function () {
-    Route::get('/', [CompraController::class, 'index']);      // <--- GET para listar
-    Route::post('/', [CompraController::class, 'store']);     // <--- POST para crear
+    Route::post('/', [CompraController::class, 'store']);  // <-- POST /
+    Route::get('/', [CompraController::class, 'index']);   // <-- GET /
     Route::get('/resumen', [CompraController::class, 'resumen']);
 });
 // Almacén

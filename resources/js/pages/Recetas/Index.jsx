@@ -81,7 +81,6 @@ export default function RecetasIndex() {
         : '/api/recetas';
     const method = editando ? 'put' : 'post';
 
-    // Estructurar los datos correctamente
     const dataToSend = {
         producto_final_id: formData.producto_final_id,
         insumos: formData.insumos.map(insumo => ({
@@ -107,19 +106,18 @@ export default function RecetasIndex() {
         alert('❌ Error al guardar la receta');
       });
   };
+
   const handleEdit = (receta) => {
-    // Verificar que receta tenga datos
     if (!receta || !receta.id) {
         console.error('Datos de receta inválidos:', receta);
         alert('Error al cargar la receta para editar');
         return;
     }
 
-    // Cargar la receta completa desde la API
     axios.get(`/api/recetas/${receta.id}`)
         .then(response => {
             const data = response.data;
-            setEditando(data); // Guardar el objeto completo
+            setEditando(data);
             setFormData({
                 producto_final_id: data.producto.id,
                 insumos: data.insumos.map(item => ({
@@ -136,22 +134,7 @@ export default function RecetasIndex() {
         });
   };
 
-    const insumosData = receta.insumos?.map(item => ({
-      insumo_id: item.insumo?.id || '',
-      cantidad_teorica: item.cantidad_teorica || ''
-    })) || [{ insumo_id: '', cantidad_teorica: '' }];
-
-    setEditando(receta);
-    setFormData({
-      producto_final_id: receta.producto.id,
-      insumos: insumosData.length > 0 ? insumosData : [{ insumo_id: '', cantidad_teorica: '' }],
-      unidades_base: receta.insumos?.[0]?.unidades_base || '100'
-    });
-    setShowModal(true);
-  };
-
   const handleDelete = (receta) => {
-    // Verificar que la receta tenga un ID válido
     if (!receta || !receta.id) {
         alert('No se puede eliminar esta receta (ID no encontrado)');
         return;
@@ -169,7 +152,7 @@ export default function RecetasIndex() {
             });
     }
   };
-    
+
   if (loading) {
     return (
       <AuthenticatedLayout>
@@ -256,7 +239,7 @@ export default function RecetasIndex() {
                 ))}
                 {recetas.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                       <div className="flex flex-col items-center gap-2">
                         <span className="text-4xl">📝</span>
                         <p>No hay recetas registradas</p>

@@ -108,11 +108,33 @@ export default function RecetasIndex() {
       });
   };
   const handleEdit = (receta) => {
-    setEditando(receta);
-    if (!receta || !receta.producto || !receta.producto.id) {
-      console.error('Datos de receta inválidos:', receta);
-      return;
+    // Verificar que receta tenga datos
+    if (!receta || !receta.id) {
+        console.error('Datos de receta inválidos:', receta);
+        alert('Error al cargar la receta para editar');
+        return;
     }
+
+    // Cargar la receta completa desde la API
+    axios.get(`/api/recetas/${receta.id}`)
+        .then(response => {
+            const data = response.data;
+            setEditando(data); // Guardar el objeto completo
+            setFormData({
+                producto_final_id: data.producto.id,
+                insumos: data.insumos.map(item => ({
+                    insumo_id: item.insumo.id,
+                    cantidad_teorica: item.cantidad_teorica
+                })),
+                unidades_base: data.unidades_base || 100
+            });
+            setShowModal(true);
+        })
+        .catch(error => {
+            console.error('Error cargando receta:', error);
+            alert('Error al cargar la receta para editar');
+        });
+  };
 
     const insumosData = receta.insumos?.map(item => ({
       insumo_id: item.insumo?.id || '',

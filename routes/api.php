@@ -85,6 +85,7 @@ Route::prefix('compras')->group(function () {
     Route::get('/', [CompraController::class, 'index']);   // <-- GET /
     Route::get('/resumen', [CompraController::class, 'resumen']);
 });
+Route::delete('/compras/{id}', [CompraController::class, 'destroy']);
 // Almacén
 Route::prefix('almacen')->group(function () {
     Route::get('/productos-terminados', [AlmacenController::class, 'productosTerminados']);

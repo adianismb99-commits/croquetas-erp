@@ -21,15 +21,11 @@ import {
 
 export default function AuthenticatedLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [expandedMenus, setExpandedMenus] = useState({
-    'Almacén': true,  // El submenú de Almacén siempre abierto por defecto
-  });
-  const [notificacionesExpanded, setNotificacionesExpanded] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState({});
   const { url } = usePage();
 
   useEffect(() => {
     setSidebarOpen(false);
-    // No cerramos expandedMenus, para que el submenú se mantenga abierto
   }, [url]);
 
   const toggleMenu = (name) => {
@@ -67,6 +63,9 @@ export default function AuthenticatedLayout({ children }) {
     return children?.some(child => isActive(child.href));
   };
 
+  // Verificar si Almacén debe estar abierto
+  const isAlmacenActive = isChildActive(navigation.find(item => item.name === 'Almacén')?.children);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {sidebarOpen && (
@@ -90,15 +89,22 @@ export default function AuthenticatedLayout({ children }) {
         </div>
 
         <nav className="mt-2 px-2 pb-4 space-y-0.5 overflow-y-auto max-h-[calc(100vh-80px)]">
-          {/* NOTIFICACIONES AQUÍ - SOLO UNA VEZ */}
           <NotificationBell 
-            expanded={notificacionesExpanded} 
-            onToggle={() => setNotificacionesExpanded(!notificacionesExpanded)} 
+            expanded={expandedMenus['Notificaciones']} 
+            onToggle={() => toggleMenu('Notificaciones')} 
           />
 
           {navigation.map((item) => {
             const hasChildren = item.children && item.children.length > 0;
-            const isExpanded = expandedMenus[item.name] || false;
+            
+            // Para Almacén, usamos el estado isAlmacenActive
+            let isExpanded;
+            if (item.name === 'Almacén') {
+              isExpanded = expandedMenus[item.name] !== undefined ? expandedMenus[item.name] : isAlmacenActive;
+            } else {
+              isExpanded = expandedMenus[item.name] || false;
+            }
+            
             const isActiveParent = hasChildren && isChildActive(item.children);
             const Icon = item.icon;
 

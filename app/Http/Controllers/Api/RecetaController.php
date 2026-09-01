@@ -99,16 +99,22 @@ class RecetaController extends Controller
 
     public function update(Request $request, $id)
     {
-        $receta = Receta::findOrFail($id);
-        
-        $validated = $request->validate([
-            'insumo_id' => 'sometimes|exists:insumos,id',
-            'cantidad_teorica' => 'sometimes|numeric|min:0.01',
-            'unidades_base' => 'sometimes|integer|min:1'
-        ]);
+        try {
+            // Buscar la receta por su ID
+            $receta = Receta::findOrFail($id);
+            
+            $validated = $request->validate([
+                'insumo_id' => 'sometimes|exists:insumos,id',
+                'cantidad_teorica' => 'sometimes|numeric|min:0.01',
+                'unidades_base' => 'sometimes|integer|min:1'
+            ]);
     
-        $receta->update($validated);
-        return response()->json($receta->load(['productoFinal', 'insumo']));
+            $receta->update($validated);
+            return response()->json($receta->load(['productoFinal', 'insumo']));
+    
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
     public function destroy($id)
     {

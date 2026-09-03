@@ -86,4 +86,8 @@ class LoteInsumo extends Model
             'fecha' => now()
         ]);
     }
+    public function ciclo()
+    {
+        return $this->belongsTo(Ciclo::class);
+    }
 }

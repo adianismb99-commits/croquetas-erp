@@ -221,6 +221,7 @@ export default function ContabilidadIndex() {
 
     // ========== REPORTES ==========
     const fetchReporte = () => {
+        console.log('📊 Datos enviados:', filtrosReporte);
         setLoadingReporte(true);
         axios.post('/api/contabilidad/reporte', filtrosReporte)
             .then(response => {

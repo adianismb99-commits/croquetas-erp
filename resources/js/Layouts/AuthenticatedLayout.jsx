@@ -36,35 +36,34 @@ export default function AuthenticatedLayout({ children }) {
   };
 
   const navigation = [
-    { name: 'Panel de Control', href: '/dashboard', icon: HomeIcon },
-    { name: 'Insumos', href: '/insumos', icon: CubeIcon },
-    { name: 'Proveedores', href: '/proveedores', icon: BuildingOfficeIcon },
-    {
-      name: 'Almacén',
-      icon: DocumentTextIcon,
-      children: [
-        { name: 'Insumos', href: '/lotes' },
-        { name: 'Productos Terminados', href: '/almacen/productos-terminados' },
-        { name: 'Movimientos', href: '/movimientos' }
-      ]
-    },
-    { name: 'Productos', href: '/productos', icon: ShoppingBagIcon },
-    { name: 'Recetas', href: '/recetas', icon: BeakerIcon },
-    { name: 'Producción', href: '/produccion', icon: Cog6ToothIcon },
-    { name: 'Clientes', href: '/clientes', icon: UserGroupIcon },
-    { name: 'Compras', href: '/compras', icon: ShoppingCartIcon },
-    { name: 'Ventas', href: '/ventas', icon: ShoppingCartIcon },
-    { name: 'Encargos', href: '/encargos', icon: ClockIcon },
-    { name: 'Contabilidad', href: '/contabilidad', icon: ChartBarIcon },
-  ];
-
+      { name: 'Panel de Control', href: '/dashboard', icon: HomeIcon },
+      { name: 'Insumos', href: '/insumos', icon: CubeIcon },
+      { name: 'Proveedores', href: '/proveedores', icon: BuildingOfficeIcon },
+      {
+        name: 'Almacen',
+        icon: DocumentTextIcon,
+        children: [
+          { name: 'Insumos', href: '/lotes' },
+          { name: 'Productos Terminados', href: '/almacen/productos-terminados' },
+          { name: 'Movimientos', href: '/movimientos' }
+        ]
+      },
+      { name: 'Productos', href: '/productos', icon: ShoppingBagIcon },
+      { name: 'Recetas', href: '/recetas', icon: BeakerIcon },
+      { name: 'Produccion', href: '/produccion', icon: Cog6ToothIcon },
+      { name: 'Clientes', href: '/clientes', icon: UserGroupIcon },
+      { name: 'Compras', href: '/compras', icon: ShoppingCartIcon },
+      { name: 'Ventas', href: '/ventas', icon: ShoppingCartIcon },
+      { name: 'Encargos', href: '/encargos', icon: ClockIcon },
+      { name: 'Contabilidad', href: '/contabilidad', icon: ChartBarIcon },
+    ];
   const isActive = (href) => url === href || url.startsWith(href + '/');
   const isChildActive = (children) => {
     return children?.some(child => isActive(child.href));
   };
 
   // Verificar si Almacén debe estar abierto
-  const isAlmacenActive = isChildActive(navigation.find(item => item.name === 'Almacén')?.children);
+  const isAlmacenActive = isChildActive(navigation.find(item => item.name === 'Almacen')?.children);
 
   return (
     <div className="min-h-screen bg-gray-50">

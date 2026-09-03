@@ -3,238 +3,195 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Movimiento;
+use App\Models\Ciclo;
 use App\Models\Venta;
-use App\Models\Produccion;
-use App\Models\ProductoFinal;
-use App\Models\Cliente;
+use App\Models\LoteInsumo;
+use App\Models\GastoOperativo;
 use Illuminate\Http\Request;
 
 class ContabilidadController extends Controller
 {
-    public function index(Request $request)
+    // Dashboard de contabilidad
+    public function dashboard()
     {
-        try {
-            $query = Movimiento::query();
-
-            if ($request->filled('fecha_desde')) {
-                $query->whereDate('fecha', '>=', $request->fecha_desde);
-            }
-            if ($request->filled('fecha_hasta')) {
-                $query->whereDate('fecha', '<=', $request->fecha_hasta);
-            }
-            if ($request->filled('producto')) {
-                $query->where('producto_nombre', 'like', '%' . $request->producto . '%');
-            }
-            if ($request->filled('tipo')) {
-                $query->where('tipo', $request->tipo);
-            }
-
-            $movimientos = $query->get();
-
-            // ========== RESUMEN GENERAL ==========
-            $totalIngresos = $movimientos->where('tipo', 'venta')->sum('costo_total');
-            $totalCostos = $movimientos->where('tipo', 'compra')->sum('costo_total') 
-                + $movimientos->where('tipo', 'produccion')->sum('costo_total');
-            $gananciaBruta = $totalIngresos - $totalCostos;
-            $porcentajeRentabilidad = $totalIngresos > 0 ? ($gananciaBruta / $totalIngresos) * 100 : 0;
-
-            $ventas = $movimientos->where('tipo', 'venta');
-            $producciones = $movimientos->where('tipo', 'produccion');
-            $compras = $movimientos->where('tipo', 'compra');
-
-            $unidadesVendidas = $ventas->sum('cantidad');
-            $unidadesProducidas = $producciones->sum('cantidad');
-            $margenPorUnidad = $unidadesVendidas > 0 ? $gananciaBruta / $unidadesVendidas : 0;
-            $costoPromedioUnidad = $unidadesProducidas > 0 ? $totalCostos / $unidadesProducidas : 0;
-
-            // ========== GRÁFICOS ==========
-            // 1. Evolución de ventas por día
-            $ventasPorDia = $ventas->groupBy(function($item) {
-                return $item->fecha->format('Y-m-d');
-            })->map(function($items) {
-                return [
-                    'total' => $items->sum('costo_total'),
-                    'unidades' => $items->sum('cantidad'),
-                    'ventas' => $items->count()
-                ];
-            })->sortKeys();
-
-            // 2. Costo teórico vs real por producción
-            $produccionesData = Produccion::with(['productoFinal'])
-                ->when($request->filled('fecha_desde'), function($q) use ($request) {
-                    return $q->whereDate('fecha_hora', '>=', $request->fecha_desde);
-                })
-                ->when($request->filled('fecha_hasta'), function($q) use ($request) {
-                    return $q->whereDate('fecha_hora', '<=', $request->fecha_hasta);
-                })
-                ->get()
-                ->map(function($p) {
-                    return [
-                        'codigo' => $p->codigo,
-                        'producto' => $p->productoFinal->nombre ?? 'Sin producto',
-                        'costo_teorico' => $p->costo_teorico ?? 0,
-                        'costo_real' => $p->costo_real ?? 0,
-                        'diferencia' => ($p->costo_real ?? 0) - ($p->costo_teorico ?? 0)
-                    ];
-                });
-
-            // 3. Rentabilidad por producto
-            $rentabilidadPorProducto = $movimientos->groupBy('producto_nombre')->map(function($items, $nombre) {
-                $ventasProducto = $items->where('tipo', 'venta')->sum('costo_total');
-                $costosProducto = $items->where('tipo', 'compra')->sum('costo_total') 
-                    + $items->where('tipo', 'produccion')->sum('costo_total');
-                $ganancia = $ventasProducto - $costosProducto;
-                return [
-                    'nombre' => $nombre,
-                    'ventas' => $ventasProducto,
-                    'costos' => $costosProducto,
-                    'ganancia' => $ganancia,
-                    'rentabilidad' => $ventasProducto > 0 ? ($ganancia / $ventasProducto) * 100 : 0
-                ];
-            })->sortByDesc('ganancia')->take(10);
-
-            // 4. Distribución de costos por insumo
-            $costosPorInsumo = Movimiento::where('tipo', 'uso_insumo')
-                ->when($request->filled('fecha_desde'), function($q) use ($request) {
-                    return $q->whereDate('fecha', '>=', $request->fecha_desde);
-                })
-                ->when($request->filled('fecha_hasta'), function($q) use ($request) {
-                    return $q->whereDate('fecha', '<=', $request->fecha_hasta);
-                })
-                ->get()
-                ->groupBy('producto_nombre')
-                ->map(function($items) {
-                    return $items->sum('costo_total');
-                })
-                ->sortByDesc('ganancia')
-                ->take(8);
-
-            // 5. Ventas por tipo de cliente
-            $ventasPorCliente = [];
-            $ventasQuery = Venta::with('cliente')
-                ->when($request->filled('fecha_desde'), function($q) use ($request) {
-                    return $q->whereDate('fecha_hora', '>=', $request->fecha_desde);
-                })
-                ->when($request->filled('fecha_hasta'), function($q) use ($request) {
-                    return $q->whereDate('fecha_hora', '<=', $request->fecha_hasta);
-                })
-                ->get();
-
-            // Si no hay ventas, devolver array vacío
-            if ($ventasQuery->isEmpty()) {
-                $ventasPorCliente = [];
-            } else {
-                foreach ($ventasQuery as $venta) {
-                    // Asegurar que el cliente existe y tiene tipo
-                    if ($venta->cliente) {
-                        $tipo = $venta->cliente->tipo ?? 'particular';
-                    } else {
-                        $tipo = 'particular';
-                    }
-                    
-                    if (!isset($ventasPorCliente[$tipo])) {
-                        $ventasPorCliente[$tipo] = [
-                            'tipo' => $tipo,
-                            'total' => 0, 
-                            'unidades' => 0, 
-                            'ventas' => 0
-                        ];
-                    }
-                    $ventasPorCliente[$tipo]['total'] += $venta->total;
-                    $ventasPorCliente[$tipo]['unidades'] += $venta->cantidad;
-                    $ventasPorCliente[$tipo]['ventas'] += 1;
-                }
-                // Convertir a array indexado
-                $ventasPorCliente = array_values($ventasPorCliente);
-            }
-
-            // 6. Top clientes
-            $topClientes = Cliente::with(['ventas'])
-                ->get()
-                ->map(function($cliente) {
-                    return [
-                        'nombre' => $cliente->nombre,
-                        'tipo' => $cliente->tipo,
-                        'total_compras' => $cliente->ventas->sum('cantidad'),
-                        'total_gastado' => $cliente->ventas->sum('total'),
-                        'num_compras' => $cliente->ventas->count()
-                    ];
-                })->sortByDesc('total_gastado')->take(5);
-
-            // ========== RESUMEN POR PRODUCTO ==========
-            $resumenPorProducto = ProductoFinal::all()->map(function($producto) use ($request) {
-                $ventasProducto = $producto->ventas()
-                    ->when($request->filled('fecha_desde'), function($q) use ($request) {
-                        return $q->whereDate('fecha_hora', '>=', $request->fecha_desde);
-                    })
-                    ->when($request->filled('fecha_hasta'), function($q) use ($request) {
-                        return $q->whereDate('fecha_hora', '<=', $request->fecha_hasta);
-                    })
-                    ->get();
-                
-                $produccionesProducto = $producto->producciones()
-                    ->when($request->filled('fecha_desde'), function($q) use ($request) {
-                        return $q->whereDate('fecha_hora', '>=', $request->fecha_desde);
-                    })
-                    ->when($request->filled('fecha_hasta'), function($q) use ($request) {
-                        return $q->whereDate('fecha_hora', '<=', $request->fecha_hasta);
-                    })
-                    ->get();
-
-                $totalVentas = $ventasProducto->sum('total');
-                $totalUnidadesVendidas = $ventasProducto->sum('cantidad');
-                $totalProducido = $produccionesProducto->sum('cantidad');
-                $costoProduccion = $produccionesProducto->sum('costo_real');
-
-                return [
-                    'nombre' => $producto->nombre,
-                    'codigo' => $producto->codigo,
-                    'producido' => $totalProducido,
-                    'vendido' => $totalUnidadesVendidas,
-                    'porcentaje_venta' => $totalProducido > 0 ? ($totalUnidadesVendidas / $totalProducido) * 100 : 0,
-                    'ingresos' => $totalVentas,
-                    'costo' => $costoProduccion,
-                    'ganancia' => $totalVentas - $costoProduccion,
-                    'rentabilidad' => $totalVentas > 0 ? (($totalVentas - $costoProduccion) / $totalVentas) * 100 : 0
-                ];
-            })->filter(function($item) {
-                return $item['producido'] > 0 || $item['vendido'] > 0;
-            })->values();
-
-            return response()->json([
-                'resumen' => [
-                    'total_ingresos' => $totalIngresos,
-                    'total_costos' => $totalCostos,
-                    'ganancia_bruta' => $gananciaBruta,
-                    'porcentaje_rentabilidad' => $porcentajeRentabilidad,
-                    'margen_por_unidad' => $margenPorUnidad,
-                    'costo_promedio_unidad' => $costoPromedioUnidad,
-                    'unidades_vendidas' => $unidadesVendidas,
-                    'unidades_producidas' => $unidadesProducidas,
-                    'total_ventas' => $ventas->count(),
-                    'total_producciones' => $producciones->count(),
-                    'total_compras' => $compras->count()
-                ],
-                'graficos' => [
-                    'ventas_por_dia' => $ventasPorDia,
-                    'costo_vs_real' => $produccionesData,
-                    'rentabilidad_productos' => $rentabilidadPorProducto,
-                    'distribucion_costos' => $costosPorInsumo,
-                    'ventas_por_cliente' => $ventasPorCliente
-                ],
-                'top_clientes' => $topClientes->values(),
-                'resumen_productos' => $resumenPorProducto,
-                'movimientos' => $movimientos->sortByDesc('fecha')->take(50)->values()
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+        $cicloActual = Ciclo::getCicloActual();
+        if ($cicloActual) {
+            $cicloActual->calcularGanancias();
         }
+
+        $ciclosCerrados = Ciclo::where('estado', 'cerrado')->get();
+
+        $totalInversion = $ciclosCerrados->sum('inversion_total');
+        $totalIngresos = $ciclosCerrados->sum('ingresos_totales');
+        $totalGastos = $ciclosCerrados->sum('gastos_operativos');
+        $totalGanancia = $ciclosCerrados->sum('ganancia_neta');
+
+        if ($cicloActual) {
+            $totalInversion += $cicloActual->inversion_total;
+            $totalIngresos += $cicloActual->ingresos_totales;
+            $totalGastos += $cicloActual->gastos_operativos;
+            $totalGanancia += $cicloActual->ganancia_neta;
+        }
+
+        return response()->json([
+            'ciclo_actual' => $cicloActual,
+            'ciclos_cerrados' => $ciclosCerrados,
+            'resumen' => [
+                'total_inversion' => $totalInversion,
+                'total_ingresos' => $totalIngresos,
+                'total_gastos' => $totalGastos,
+                'total_ganancia' => $totalGanancia,
+                'total_ciclos' => $ciclosCerrados->count(),
+                'rentabilidad' => $totalIngresos > 0 ? ($totalGanancia / $totalIngresos) * 100 : 0
+            ]
+        ]);
     }
 
-    public function exportar(Request $request)
+    // Reportes por período
+    public function reporte(Request $request)
     {
-        $data = $this->index($request)->getData();
-        return response()->json($data);
+        $request->validate([
+            'tipo' => 'required|in:dia,semana,mes,personalizado,ciclo',
+            'fecha_desde' => 'required_if:tipo,personalizado|date',
+            'fecha_hasta' => 'required_if:tipo,personalizado|date|after_or_equal:fecha_desde',
+            'ciclo_id' => 'required_if:tipo,ciclo|exists:ciclos,id'
+        ]);
+
+        $tipo = $request->tipo;
+
+        switch ($tipo) {
+            case 'dia':
+                $fecha = now()->toDateString();
+                $ventas = Venta::whereDate('fecha_hora', $fecha)->get();
+                $compras = LoteInsumo::whereDate('created_at', $fecha)->where('es_inversion', true)->get();
+                $gastos = GastoOperativo::whereDate('fecha', $fecha)->get();
+                break;
+
+            case 'semana':
+                $inicio = now()->startOfWeek();
+                $fin = now()->endOfWeek();
+                $ventas = Venta::whereBetween('fecha_hora', [$inicio, $fin])->get();
+                $compras = LoteInsumo::whereBetween('created_at', [$inicio, $fin])->where('es_inversion', true)->get();
+                $gastos = GastoOperativo::whereBetween('fecha', [$inicio, $fin])->get();
+                break;
+
+            case 'mes':
+                $inicio = now()->startOfMonth();
+                $fin = now()->endOfMonth();
+                $ventas = Venta::whereBetween('fecha_hora', [$inicio, $fin])->get();
+                $compras = LoteInsumo::whereBetween('created_at', [$inicio, $fin])->where('es_inversion', true)->get();
+                $gastos = GastoOperativo::whereBetween('fecha', [$inicio, $fin])->get();
+                break;
+
+            case 'personalizado':
+                $ventas = Venta::whereBetween('fecha_hora', [$request->fecha_desde, $request->fecha_hasta])->get();
+                $compras = LoteInsumo::whereBetween('created_at', [$request->fecha_desde, $request->fecha_hasta])->where('es_inversion', true)->get();
+                $gastos = GastoOperativo::whereBetween('fecha', [$request->fecha_desde, $request->fecha_hasta])->get();
+                break;
+
+            case 'ciclo':
+                $ciclo = Ciclo::with(['ventas', 'lotes', 'gastos'])->findOrFail($request->ciclo_id);
+                return response()->json([
+                    'ciclo' => $ciclo,
+                    'resumen' => [
+                        'inversion' => $ciclo->inversion_total,
+                        'ingresos' => $ciclo->ingresos_totales,
+                        'ganancia_bruta' => $ciclo->ganancia_bruta,
+                        'gastos' => $ciclo->gastos_operativos,
+                        'ganancia_neta' => $ciclo->ganancia_neta,
+                        'rentabilidad' => $ciclo->porcentaje_rentabilidad
+                    ]
+                ]);
+                break;
+        }
+
+        $totalInversion = $compras->sum('precio_total');
+        $totalIngresos = $ventas->sum('total');
+        $totalGastos = $gastos->sum('monto');
+        $gananciaBruta = $totalIngresos - $totalInversion;
+        $gananciaNeta = $gananciaBruta - $totalGastos;
+
+        return response()->json([
+            'periodo' => [
+                'tipo' => $tipo,
+                'fecha_inicio' => $request->fecha_desde ?? $inicio ?? null,
+                'fecha_fin' => $request->fecha_hasta ?? $fin ?? null
+            ],
+            'resumen' => [
+                'inversion' => $totalInversion,
+                'ingresos' => $totalIngresos,
+                'ganancia_bruta' => $gananciaBruta,
+                'gastos' => $totalGastos,
+                'ganancia_neta' => $gananciaNeta,
+                'rentabilidad' => $totalIngresos > 0 ? ($gananciaNeta / $totalIngresos) * 100 : 0
+            ],
+            'ventas' => $ventas,
+            'compras' => $compras,
+            'gastos' => $gastos
+        ]);
+    }
+
+    // Datos para gráficos
+    public function graficos()
+    {
+        $ciclos = Ciclo::where('estado', 'cerrado')
+            ->orderBy('fecha_inicio', 'asc')
+            ->get();
+
+        $cicloActual = Ciclo::getCicloActual();
+        if ($cicloActual) {
+            $cicloActual->calcularGanancias();
+        }
+
+        // Evolución de ganancia neta
+        $evolucion = $ciclos->map(function($ciclo) {
+            return [
+                'codigo' => $ciclo->codigo,
+                'ganancia_neta' => $ciclo->ganancia_neta,
+                'rentabilidad' => $ciclo->porcentaje_rentabilidad
+            ];
+        });
+
+        // Distribución de gastos por categoría
+        $gastos = GastoOperativo::with('categoria')->get();
+        $distribucion = $gastos->groupBy('categoria_id')->map(function($items) {
+            $categoria = $items->first()->categoria;
+            return [
+                'categoria' => $categoria ? $categoria->nombre : 'Sin categoría',
+                'total' => $items->sum('monto'),
+                'color' => $categoria ? $categoria->color : '#6B3FA0'
+            ];
+        })->values();
+
+        // Ventas vs Inversión por ciclo
+        $comparativa = $ciclos->map(function($ciclo) {
+            return [
+                'codigo' => $ciclo->codigo,
+                'inversion' => $ciclo->inversion_total,
+                'ingresos' => $ciclo->ingresos_totales,
+                'ganancia' => $ciclo->ganancia_neta
+            ];
+        });
+
+        // Datos del ciclo actual
+        $actual = null;
+        if ($cicloActual) {
+            $actual = [
+                'codigo' => $cicloActual->codigo,
+                'inversion' => $cicloActual->inversion_total,
+                'ingresos' => $cicloActual->ingresos_totales,
+                'ganancia_bruta' => $cicloActual->ganancia_bruta,
+                'ganancia_neta' => $cicloActual->ganancia_neta,
+                'rentabilidad' => $cicloActual->porcentaje_rentabilidad
+            ];
+        }
+
+        return response()->json([
+            'evolucion' => $evolucion,
+            'distribucion_gastos' => $distribucion,
+            'comparativa_ciclos' => $comparativa,
+            'ciclo_actual' => $actual,
+            'total_ciclos' => $ciclos->count()
+        ]);
     }
 }

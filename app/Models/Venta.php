@@ -39,4 +39,8 @@ class Venta extends Model
         return $this->hasOne(Movimiento::class, 'producto_id', 'producto_final_id')
             ->where('tipo', 'venta');
     }
+    public function ciclo()
+    {
+        return $this->belongsTo(Ciclo::class);
+    }
 }

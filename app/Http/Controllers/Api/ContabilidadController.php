@@ -50,46 +50,26 @@ class ContabilidadController extends Controller
     // Reportes por período
     public function reporte(Request $request)
     {
-        $request->validate([
-            'tipo' => 'required|in:dia,semana,mes,personalizado,ciclo',
-            'fecha_desde' => 'required_if:tipo,personalizado|date',
-            'fecha_hasta' => 'required_if:tipo,personalizado|date|after_or_equal:fecha_desde',
-            'ciclo_id' => 'required_if:tipo,ciclo|exists:ciclos,id'
-        ]);
-
-        $tipo = $request->tipo;
-
-        switch ($tipo) {
-            case 'dia':
-                $fecha = now()->toDateString();
-                $ventas = Venta::whereDate('fecha_hora', $fecha)->get();
-                $compras = LoteInsumo::whereDate('created_at', $fecha)->where('es_inversion', true)->get();
-                $gastos = GastoOperativo::whereDate('fecha', $fecha)->get();
-                break;
-
-            case 'semana':
-                $inicio = now()->startOfWeek();
-                $fin = now()->endOfWeek();
-                $ventas = Venta::whereBetween('fecha_hora', [$inicio, $fin])->get();
-                $compras = LoteInsumo::whereBetween('created_at', [$inicio, $fin])->where('es_inversion', true)->get();
-                $gastos = GastoOperativo::whereBetween('fecha', [$inicio, $fin])->get();
-                break;
-
-            case 'mes':
-                $inicio = now()->startOfMonth();
-                $fin = now()->endOfMonth();
-                $ventas = Venta::whereBetween('fecha_hora', [$inicio, $fin])->get();
-                $compras = LoteInsumo::whereBetween('created_at', [$inicio, $fin])->where('es_inversion', true)->get();
-                $gastos = GastoOperativo::whereBetween('fecha', [$inicio, $fin])->get();
-                break;
-
-            case 'personalizado':
-                $ventas = Venta::whereBetween('fecha_hora', [$request->fecha_desde, $request->fecha_hasta])->get();
-                $compras = LoteInsumo::whereBetween('created_at', [$request->fecha_desde, $request->fecha_hasta])->where('es_inversion', true)->get();
-                $gastos = GastoOperativo::whereBetween('fecha', [$request->fecha_desde, $request->fecha_hasta])->get();
-                break;
-
-            case 'ciclo':
+        try {
+            $tipo = $request->tipo;
+    
+            // Validar tipo
+            if (!in_array($tipo, ['dia', 'semana', 'mes', 'personalizado', 'ciclo'])) {
+                return response()->json(['error' => 'Tipo de reporte inválido'], 422);
+            }
+    
+            // Validar según el tipo
+            if ($tipo === 'personalizado') {
+                $request->validate([
+                    'fecha_desde' => 'required|date',
+                    'fecha_hasta' => 'required|date|after_or_equal:fecha_desde'
+                ]);
+                $inicio = $request->fecha_desde;
+                $fin = $request->fecha_hasta;
+            } elseif ($tipo === 'ciclo') {
+                $request->validate([
+                    'ciclo_id' => 'required|exists:ciclos,id'
+                ]);
                 $ciclo = Ciclo::with(['ventas', 'lotes', 'gastos'])->findOrFail($request->ciclo_id);
                 return response()->json([
                     'ciclo' => $ciclo,
@@ -102,35 +82,66 @@ class ContabilidadController extends Controller
                         'rentabilidad' => $ciclo->porcentaje_rentabilidad
                     ]
                 ]);
-                break;
+            } else {
+                // dia, semana, mes
+                switch ($tipo) {
+                    case 'dia':
+                        $inicio = now()->toDateString();
+                        $fin = now()->toDateString();
+                        break;
+                    case 'semana':
+                        $inicio = now()->startOfWeek()->toDateString();
+                        $fin = now()->endOfWeek()->toDateString();
+                        break;
+                    case 'mes':
+                        $inicio = now()->startOfMonth()->toDateString();
+                        $fin = now()->endOfMonth()->toDateString();
+                        break;
+                    default:
+                        return response()->json(['error' => 'Tipo inválido'], 422);
+                }
+            }
+    
+            // Si no se definieron fechas (por si acaso)
+            if (!isset($inicio) || !isset($fin)) {
+                return response()->json(['error' => 'No se pudo determinar el período'], 422);
+            }
+    
+            // Obtener datos
+            $ventas = Venta::whereBetween('fecha_hora', [$inicio, $fin])->get();
+            $compras = LoteInsumo::whereBetween('created_at', [$inicio, $fin])->where('es_inversion', true)->get();
+            $gastos = GastoOperativo::whereBetween('fecha', [$inicio, $fin])->get();
+    
+            $totalInversion = $compras->sum('precio_total');
+            $totalIngresos = $ventas->sum('total');
+            $totalGastos = $gastos->sum('monto');
+            $gananciaBruta = $totalIngresos - $totalInversion;
+            $gananciaNeta = $gananciaBruta - $totalGastos;
+    
+            return response()->json([
+                'periodo' => [
+                    'tipo' => $tipo,
+                    'fecha_inicio' => $inicio,
+                    'fecha_fin' => $fin
+                ],
+                'resumen' => [
+                    'inversion' => $totalInversion,
+                    'ingresos' => $totalIngresos,
+                    'ganancia_bruta' => $gananciaBruta,
+                    'gastos' => $totalGastos,
+                    'ganancia_neta' => $gananciaNeta,
+                    'rentabilidad' => $totalIngresos > 0 ? ($gananciaNeta / $totalIngresos) * 100 : 0
+                ],
+                'ventas' => $ventas,
+                'compras' => $compras,
+                'gastos' => $gastos
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        $totalInversion = $compras->sum('precio_total');
-        $totalIngresos = $ventas->sum('total');
-        $totalGastos = $gastos->sum('monto');
-        $gananciaBruta = $totalIngresos - $totalInversion;
-        $gananciaNeta = $gananciaBruta - $totalGastos;
-
-        return response()->json([
-            'periodo' => [
-                'tipo' => $tipo,
-                'fecha_inicio' => $request->fecha_desde ?? $inicio ?? null,
-                'fecha_fin' => $request->fecha_hasta ?? $fin ?? null
-            ],
-            'resumen' => [
-                'inversion' => $totalInversion,
-                'ingresos' => $totalIngresos,
-                'ganancia_bruta' => $gananciaBruta,
-                'gastos' => $totalGastos,
-                'ganancia_neta' => $gananciaNeta,
-                'rentabilidad' => $totalIngresos > 0 ? ($gananciaNeta / $totalIngresos) * 100 : 0
-            ],
-            'ventas' => $ventas,
-            'compras' => $compras,
-            'gastos' => $gastos
-        ]);
     }
-
     // Datos para gráficos
     public function graficos()
     {

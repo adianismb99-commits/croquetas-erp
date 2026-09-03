@@ -17,6 +17,9 @@ use App\Http\Controllers\Api\ContabilidadController;
 use App\Http\Controllers\Api\CompraController;
 use App\Http\Controllers\Api\AlmacenController;
 use App\Http\Controllers\Api\NotificacionController;
+use App\Http\Controllers\Api\CicloController;
+use App\Http\Controllers\Api\GastoOperativoController;
+use App\Http\Controllers\Api\CategoriaGastoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -76,8 +79,9 @@ Route::prefix('movimientos')->group(function () {
 });
 // Contabilidad
 Route::prefix('contabilidad')->group(function () {
-    Route::post('/', [ContabilidadController::class, 'index']);
-    Route::post('/exportar', [ContabilidadController::class, 'exportar']);
+    Route::get('dashboard', [ContabilidadController::class, 'dashboard']);
+    Route::post('reporte', [ContabilidadController::class, 'reporte']);
+    Route::get('graficos', [ContabilidadController::class, 'graficos']);
 });
 // Compras
 Route::prefix('compras')->group(function () {
@@ -99,6 +103,19 @@ Route::prefix('notificaciones')->group(function () {
 Route::post('/notificaciones/subscribe', [NotificacionController::class, 'subscribe']);
 Route::post('/notificaciones/unsubscribe', [NotificacionController::class, 'unsubscribe']);
 Route::post('/notificaciones/send-test', [NotificacionController::class, 'sendTest']);
+// Ciclos
+Route::prefix('ciclos')->group(function () {
+    Route::get('actual', [CicloController::class, 'actual']);
+    Route::get('/', [CicloController::class, 'index']);
+    Route::get('{id}', [CicloController::class, 'show']);
+    Route::post('cerrar', [CicloController::class, 'cerrar']);
+    Route::post('aumentar-inversion', [CicloController::class, 'aumentarInversion']);
+    Route::get('resumen', [CicloController::class, 'resumen']);
+});
+// Categorías de gastos
+Route::apiResource('categorias-gastos', CategoriaGastoController::class);
+// Gastos operativos
+Route::apiResource('gastos-operativos', GastoOperativoController::class);
 
 Route::get('/prueba-lotes', function() {
     $lotes = App\Models\LoteInsumo::with(['insumo', 'proveedor'])

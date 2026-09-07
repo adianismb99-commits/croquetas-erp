@@ -107,7 +107,6 @@ export default function VentasIndex() {
     axios[method](url, formData)
         .then((response) => {
             console.log('✅ Venta guardada:', response.data);
-            
             fetchVentas();
             setShowModal(false);
             setEditando(null);
@@ -119,15 +118,9 @@ export default function VentasIndex() {
                 metodo_pago: 'efectivo',
                 fecha_hora: new Date().toISOString().slice(0, 16)
             });
-
-            // 🔥 ESPERAR 1 SEGUNDO Y RECARGAR CONTABILIDAD
-            setTimeout(() => {
-                // Disparar el evento para actualizar contabilidad
-                window.dispatchEvent(new CustomEvent('actualizarContabilidad'));
-                
-                // FORZAR RECARGA COMPLETA (solución temporal)
-                window.location.href = '/contabilidad';
-            }, 500);
+            
+            // 🔥 RECARGAR LA PÁGINA DE CONTABILIDAD
+            window.location.href = '/contabilidad';
         })
         .catch(error => {
             console.error('❌ Error:', error);

@@ -82,6 +82,7 @@ Route::prefix('contabilidad')->group(function () {
     Route::get('dashboard', [ContabilidadController::class, 'dashboard']);
     Route::post('reporte', [ContabilidadController::class, 'reporte']);
     Route::get('graficos', [ContabilidadController::class, 'graficos']);
+    Route::get('/contabilidad/graficos-filtrados', [ContabilidadController::class, 'graficosFiltrados']);
 });
 // Compras
 Route::prefix('compras')->group(function () {

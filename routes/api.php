@@ -82,7 +82,6 @@ Route::prefix('contabilidad')->group(function () {
     Route::get('dashboard', [ContabilidadController::class, 'dashboard']);
     Route::post('reporte', [ContabilidadController::class, 'reporte']);
     Route::get('graficos', [ContabilidadController::class, 'graficos']);
-    Route::get('/contabilidad/graficos-filtrados', [ContabilidadController::class, 'graficosFiltrados']);
 });
 // Compras
 Route::prefix('compras')->group(function () {
@@ -118,6 +117,8 @@ Route::prefix('ciclos')->group(function () {
 Route::apiResource('categorias-gastos', CategoriaGastoController::class);
 // Gastos operativos
 Route::apiResource('gastos-operativos', GastoOperativoController::class);
+
+Route::get('/contabilidad/graficos-filtrados', [ContabilidadController::class, 'graficosFiltrados']);
 
 Route::get('/prueba-lotes', function() {
     $lotes = App\Models\LoteInsumo::with(['insumo', 'proveedor'])

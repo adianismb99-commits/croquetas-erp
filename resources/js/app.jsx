@@ -4,6 +4,15 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import '../css/app.css';
 
+// Configurar zona horaria global para fechas
+import { formatDate, formatDateTime, formatDateOnly, formatTime } from '@/Utils/dateFormatter';
+
+// Hacerlas disponibles globalmente (opcional)
+window.formatDate = formatDate;
+window.formatDateTime = formatDateTime;
+window.formatDateOnly = formatDateOnly;
+window.formatTime = formatTime;
+
 // Registrar Service Worker
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

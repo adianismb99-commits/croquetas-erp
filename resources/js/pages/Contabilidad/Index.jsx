@@ -297,11 +297,25 @@ export default function ContabilidadIndex() {
     // ========== ESCUCHAR ACTUALIZACIONES DE VENTAS ==========
     useEffect(() => {
         const handleActualizar = () => {
-            fetchDashboard();
-            fetchGraficos();
-            fetchGastos();
-        };
-    
+            console.log('🔄 Actualizando contabilidad...');
+            
+            // 🔥 PRIMERO FORZAR ACTUALIZACIÓN DEL CICLO
+            axios.post('/api/ciclos/forzar-actualizacion')
+                .then(() => {
+                    console.log('✅ Ciclo actualizado en BD');
+                    // Luego recargar datos
+                    fetchDashboard();
+                    fetchGraficos();
+                    fetchGastos();
+                })
+                .catch(error => {
+                    console.error('❌ Error al actualizar ciclo:', error);
+                    // Aún así recargar los datos
+                    fetchDashboard();
+                    fetchGraficos();
+                    fetchGastos();
+                });
+        };    
         window.addEventListener('actualizarContabilidad', handleActualizar);
         
         return () => {

@@ -82,3 +82,16 @@ export const getCurrentDateTime = () => {
     const now = new Date();
     return now.toISOString().slice(0, 16);
 };
+
+// Sobrescribir el método toLocaleString de Date para usar la zona horaria de Cuba
+// (¡Cuidado! Esto afecta a todo el proyecto)
+if (typeof Date.prototype.toLocaleString === 'function') {
+    const originalToLocaleString = Date.prototype.toLocaleString;
+    Date.prototype.toLocaleString = function(locales, options) {
+        const defaultOptions = {
+            timeZone: TIMEZONE,
+            ...options
+        };
+        return originalToLocaleString.call(this, LOCALE, defaultOptions);
+    };
+}

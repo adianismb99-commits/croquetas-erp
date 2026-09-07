@@ -50,6 +50,29 @@ class CicloController extends Controller
 
         return response()->json($ciclo);
     }
+    public function nuevo()
+    {
+        $cicloActual = Ciclo::getCicloActual();
+    
+        // Si hay ciclo abierto, cerrarlo
+        if ($cicloActual) {
+            $cicloActual->cerrar();
+        }
+    
+        // Crear nuevo ciclo
+        $codigo = Ciclo::generarCodigo();
+        $numero = Ciclo::where('codigo', 'like', now()->format('ymd') . '-%')->count() + 1;
+    
+        $nuevoCiclo = Ciclo::create([
+            'codigo' => $codigo,
+            'numero' => $numero,
+            'fecha_inicio' => now(),
+            'inversion_total' => 0,
+            'estado' => 'abierto'
+        ]);
+    
+        return response()->json($nuevoCiclo);
+    }
 
     // Cerrar ciclo manualmente
     public function cerrar()

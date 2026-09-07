@@ -4,16 +4,6 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import '../css/app.css';
 
-createInertiaApp({
-    resolve: (name) => resolvePageComponent(
-        `./pages/${name}.jsx`,
-        import.meta.glob('./pages/**/*.jsx')
-    ),
-    setup({ el, App, props }) {
-        const root = createRoot(el);
-        root.render(<App {...props} />);
-    },
-});
 // Registrar Service Worker
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -26,3 +16,14 @@ if ('serviceWorker' in navigator) {
             });
     });
 }
+
+createInertiaApp({
+    resolve: (name) => resolvePageComponent(
+        `./pages/${name}.jsx`,
+        import.meta.glob('./pages/**/*.jsx')
+    ),
+    setup({ el, App, props }) {
+        const root = createRoot(el);
+        root.render(<App {...props} />);
+    },
+});

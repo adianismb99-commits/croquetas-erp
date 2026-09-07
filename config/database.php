@@ -97,6 +97,7 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => 'require',
+            'timezone' => 'America/Havana',
         ],
 
         'sqlsrv' => [

@@ -87,6 +87,36 @@ class VentaController extends Controller
             'venta' => $venta,
             'ciclo_actual' => $cicloActual
         ], 201);
+        // 🔥 ACTUALIZAR EL CICLO DIRECTAMENTE DESDE LA BD
+        if ($cicloActual) {
+            // Recalcular todo desde cero
+            $totalVentas = Venta::where('ciclo_id', $cicloActual->id)->sum('total');
+            
+            $cicloActual->ingresos_totales = $totalVentas;
+            $cicloActual->ganancia_bruta = $totalVentas - $cicloActual->inversion_total;
+            $cicloActual->ganancia_neta = $cicloActual->ganancia_bruta - $cicloActual->gastos_operativos;
+            
+            if ($cicloActual->inversion_total > 0) {
+                $cicloActual->porcentaje_rentabilidad = ($cicloActual->ganancia_neta / $cicloActual->inversion_total) * 100;
+            } else {
+                $cicloActual->porcentaje_rentabilidad = 0;
+            }
+            
+            $cicloActual->save();
+            
+            // Log para verificar en Render
+            \Log::info('Ciclo actualizado', [
+                'ciclo_id' => $cicloActual->id,
+                'ingresos' => $cicloActual->ingresos_totales,
+                'ganancia_neta' => $cicloActual->ganancia_neta
+            ]);
+        }
+        
+        return response()->json([
+            'venta' => $venta->load(['cliente', 'productoFinal', 'ciclo']),
+            'ciclo_actual' => $cicloActual
+        ], 201);
+    }
     }
 
     public function show($id)

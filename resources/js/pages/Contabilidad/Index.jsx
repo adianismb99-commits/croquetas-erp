@@ -40,6 +40,7 @@ const moradoPalette = {
 };
 
 export default function ContabilidadIndex() {
+    // ========== HOOKS (TODOS AL PRINCIPIO) ==========
     const [loading, setLoading] = useState(true);
     const [datos, setDatos] = useState({
         ciclo_actual: null,
@@ -87,6 +88,16 @@ export default function ContabilidadIndex() {
         fecha_hasta: '',
         categoria_id: ''
     });
+    
+    // ========== HOOKS PARA GRÁFICOS FILTRADOS ==========
+    const [filtroGrafico, setFiltroGrafico] = useState({
+        tipo: 'dia',
+        fecha_desde: '',
+        fecha_hasta: '',
+        ciclo_id: ''
+    });
+    const [graficosFiltrados, setGraficosFiltrados] = useState(null);
+    const [cargandoGraficos, setCargandoGraficos] = useState(false);
 
     // ========== FETCH DATA ==========
     const fetchDashboard = () => {
@@ -124,6 +135,32 @@ export default function ContabilidadIndex() {
                 setCategorias(response.data);
             })
             .catch(error => console.error('Error:', error));
+    };
+
+    // ========== GRÁFICOS FILTRADOS ==========
+    const fetchGraficosFiltrados = () => {
+        setCargandoGraficos(true);
+        const params = new URLSearchParams();
+        params.append('tipo', filtroGrafico.tipo);
+
+        if (filtroGrafico.tipo === 'personalizado') {
+            params.append('fecha_desde', filtroGrafico.fecha_desde);
+            params.append('fecha_hasta', filtroGrafico.fecha_hasta);
+        }
+
+        if (filtroGrafico.tipo === 'ciclo' && filtroGrafico.ciclo_id) {
+            params.append('ciclo_id', filtroGrafico.ciclo_id);
+        }
+
+        axios.get(`/api/contabilidad/graficos-filtrados?${params.toString()}`)
+            .then(response => {
+                setGraficosFiltrados(response.data);
+                setCargandoGraficos(false);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                setCargandoGraficos(false);
+            });
     };
 
     useEffect(() => {
@@ -203,6 +240,7 @@ export default function ContabilidadIndex() {
                 });
         }
     };
+
     const handleCerrarCiclo = () => {
         if (confirm('¿Estás seguro de cerrar el ciclo actual?')) {
             axios.post('/api/ciclos/cerrar')
@@ -270,11 +308,13 @@ export default function ContabilidadIndex() {
     const { ciclo_actual, ciclos_cerrados, resumen } = datos;
 
     // Preparar datos para gráficos
+    const dataGraficos = graficosFiltrados || graficos;
+
     const evolucionData = {
-        labels: graficos?.evolucion?.map(g => g.codigo) || [],
+        labels: dataGraficos?.evolucion?.map(g => g.codigo) || [],
         datasets: [{
             label: 'Ganancia Neta ($)',
-            data: graficos?.evolucion?.map(g => g.ganancia_neta) || [],
+            data: dataGraficos?.evolucion?.map(g => g.ganancia_neta) || [],
             borderColor: moradoPalette.primary,
             backgroundColor: moradoPalette.primary + '33',
             fill: true,
@@ -283,9 +323,9 @@ export default function ContabilidadIndex() {
     };
 
     const distribucionData = {
-        labels: graficos?.distribucion_gastos?.map(g => g.categoria) || [],
+        labels: dataGraficos?.distribucion_gastos?.map(g => g.categoria) || [],
         datasets: [{
-            data: graficos?.distribucion_gastos?.map(g => g.total) || [],
+            data: dataGraficos?.distribucion_gastos?.map(g => g.total) || [],
             backgroundColor: moradoPalette.gradient,
             borderWidth: 2,
             borderColor: '#fff'
@@ -293,62 +333,27 @@ export default function ContabilidadIndex() {
     };
 
     const comparativaData = {
-        labels: graficos?.comparativa_ciclos?.map(g => g.codigo) || [],
+        labels: dataGraficos?.comparativa_ciclos?.map(g => g.codigo) || [],
         datasets: [
             {
                 label: 'Inversión',
-                data: graficos?.comparativa_ciclos?.map(g => g.inversion) || [],
+                data: dataGraficos?.comparativa_ciclos?.map(g => g.inversion) || [],
                 backgroundColor: moradoPalette.light,
                 borderRadius: 4
             },
             {
                 label: 'Ingresos',
-                data: graficos?.comparativa_ciclos?.map(g => g.ingresos) || [],
+                data: dataGraficos?.comparativa_ciclos?.map(g => g.ingresos) || [],
                 backgroundColor: moradoPalette.primary,
                 borderRadius: 4
             },
             {
                 label: 'Ganancia',
-                data: graficos?.comparativa_ciclos?.map(g => g.ganancia) || [],
+                data: dataGraficos?.comparativa_ciclos?.map(g => g.ganancia) || [],
                 backgroundColor: '#22c55e',
                 borderRadius: 4
             }
         ]
-    };
-
-    const [filtroGrafico, setFiltroGrafico] = useState({
-        tipo: 'dia', // dia, semana, mes, ciclo, personalizado
-        fecha_desde: '',
-        fecha_hasta: '',
-        ciclo_id: ''
-    });
-    
-    const [graficosFiltrados, setGraficosFiltrados] = useState(null);
-    const [cargandoGraficos, setCargandoGraficos] = useState(false);
-    
-    const fetchGraficosFiltrados = () => {
-        setCargandoGraficos(true);
-        let params = new URLSearchParams();
-        params.append('tipo', filtroGrafico.tipo);
-        
-        if (filtroGrafico.tipo === 'personalizado') {
-            params.append('fecha_desde', filtroGrafico.fecha_desde);
-            params.append('fecha_hasta', filtroGrafico.fecha_hasta);
-        }
-        
-        if (filtroGrafico.tipo === 'ciclo' && filtroGrafico.ciclo_id) {
-            params.append('ciclo_id', filtroGrafico.ciclo_id);
-        }
-        
-        axios.get(`/api/contabilidad/graficos-filtrados?${params.toString()}`)
-            .then(response => {
-                setGraficosFiltrados(response.data);
-                setCargandoGraficos(false);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                setCargandoGraficos(false);
-            });
     };
 
     return (
@@ -816,62 +821,58 @@ export default function ContabilidadIndex() {
 
                 {/* Gráficos */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {graficos && (
-                        <>
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                                <h3 className="text-sm font-semibold text-[#2D1B3D] mb-4">Evolución de ganancia neta</h3>
-                                <div className="h-64">
-                                    {evolucionData.labels.length > 0 ? (
-                                        <Line data={evolucionData} options={{
-                                            responsive: true,
-                                            maintainAspectRatio: false,
-                                            plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10 } } } },
-                                            scales: {
-                                                y: { beginAtZero: true, ticks: { callback: value => '$' + value, font: { size: 10 } } },
-                                                x: { ticks: { font: { size: 9 } } }
-                                            }
-                                        }} />
-                                    ) : (
-                                        <div className="flex justify-center items-center h-full text-gray-400 text-sm">Sin datos de ciclos</div>
-                                    )}
-                                </div>
-                            </div>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                        <h3 className="text-sm font-semibold text-[#2D1B3D] mb-4">Evolución de ganancia neta</h3>
+                        <div className="h-64">
+                            {evolucionData.labels.length > 0 ? (
+                                <Line data={evolucionData} options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10 } } } },
+                                    scales: {
+                                        y: { beginAtZero: true, ticks: { callback: value => '$' + value, font: { size: 10 } } },
+                                        x: { ticks: { font: { size: 9 } } }
+                                    }
+                                }} />
+                            ) : (
+                                <div className="flex justify-center items-center h-full text-gray-400 text-sm">Sin datos de ciclos</div>
+                            )}
+                        </div>
+                    </div>
 
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                                <h3 className="text-sm font-semibold text-[#2D1B3D] mb-4">Distribución de gastos</h3>
-                                <div className="h-64">
-                                    {distribucionData.labels.length > 0 ? (
-                                        <Pie data={distribucionData} options={{
-                                            responsive: true,
-                                            maintainAspectRatio: false,
-                                            plugins: { legend: { position: 'right', labels: { font: { size: 10 } } } }
-                                        }} />
-                                    ) : (
-                                        <div className="flex justify-center items-center h-full text-gray-400 text-sm">No hay gastos registrados</div>
-                                    )}
-                                </div>
-                            </div>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                        <h3 className="text-sm font-semibold text-[#2D1B3D] mb-4">Distribución de gastos</h3>
+                        <div className="h-64">
+                            {distribucionData.labels.length > 0 ? (
+                                <Pie data={distribucionData} options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: { legend: { position: 'right', labels: { font: { size: 10 } } } }
+                                }} />
+                            ) : (
+                                <div className="flex justify-center items-center h-full text-gray-400 text-sm">No hay gastos registrados</div>
+                            )}
+                        </div>
+                    </div>
 
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 lg:col-span-2">
-                                <h3 className="text-sm font-semibold text-[#2D1B3D] mb-4">Ventas vs Inversión por ciclo</h3>
-                                <div className="h-64">
-                                    {comparativaData.labels.length > 0 ? (
-                                        <Bar data={comparativaData} options={{
-                                            responsive: true,
-                                            maintainAspectRatio: false,
-                                            plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10 } } } },
-                                            scales: {
-                                                y: { beginAtZero: true, ticks: { callback: value => '$' + value, font: { size: 10 } } },
-                                                x: { ticks: { font: { size: 9 } } }
-                                            }
-                                        }} />
-                                    ) : (
-                                        <div className="flex justify-center items-center h-full text-gray-400 text-sm">Sin datos de ciclos</div>
-                                    )}
-                                </div>
-                            </div>
-                        </>
-                    )}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 lg:col-span-2">
+                        <h3 className="text-sm font-semibold text-[#2D1B3D] mb-4">Ventas vs Inversión por ciclo</h3>
+                        <div className="h-64">
+                            {comparativaData.labels.length > 0 ? (
+                                <Bar data={comparativaData} options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10 } } } },
+                                    scales: {
+                                        y: { beginAtZero: true, ticks: { callback: value => '$' + value, font: { size: 10 } } },
+                                        x: { ticks: { font: { size: 9 } } }
+                                    }
+                                }} />
+                            ) : (
+                                <div className="flex justify-center items-center h-full text-gray-400 text-sm">Sin datos de ciclos</div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 

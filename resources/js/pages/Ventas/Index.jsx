@@ -127,7 +127,7 @@ export default function VentasIndex() {
             }
             
             // Opción 2: Usar un evento global para actualizar contabilidad
-            // window.dispatchEvent(new CustomEvent('actualizarContabilidad'));
+            window.dispatchEvent(new CustomEvent('actualizarContabilidad'));
         })
         .catch(error => console.error('Error:', error));
   };

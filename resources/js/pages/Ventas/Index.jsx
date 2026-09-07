@@ -105,20 +105,31 @@ export default function VentasIndex() {
     const method = editando ? 'put' : 'post';
 
     axios[method](url, formData)
-      .then(() => {
-        fetchVentas();
-        setShowModal(false);
-        setEditando(null);
-        setFormData({
-          cliente_id: '',
-          producto_final_id: '',
-          cantidad: '',
-          precio_unitario: '',
-          metodo_pago: 'efectivo',
-          fecha_hora: new Date().toISOString().slice(0, 16)
-        });
-      })
-      .catch(error => console.error('Error:', error));
+        .then((response) => {
+            fetchVentas(); // Recarga la lista de ventas
+            
+            // 🔥 CERRAR MODAL Y LIMPIAR FORMULARIO
+            setShowModal(false);
+            setEditando(null);
+            setFormData({
+                cliente_id: '',
+                producto_final_id: '',
+                cantidad: '',
+                precio_unitario: '',
+                metodo_pago: 'efectivo',
+                fecha_hora: new Date().toISOString().slice(0, 16)
+            });
+
+            // 🔥 RECARGAR LA PÁGINA DE CONTABILIDAD
+            // Opción 1: Recargar toda la página (más simple)
+            if (window.location.pathname === '/contabilidad') {
+                window.location.reload();
+            }
+            
+            // Opción 2: Usar un evento global para actualizar contabilidad
+            // window.dispatchEvent(new CustomEvent('actualizarContabilidad'));
+        })
+        .catch(error => console.error('Error:', error));
   };
 
   const handleEdit = (venta) => {

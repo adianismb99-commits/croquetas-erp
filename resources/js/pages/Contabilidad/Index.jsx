@@ -293,6 +293,21 @@ export default function ContabilidadIndex() {
             fetchReporte();
         }
     }, [filtrosReporte]);
+    
+    // ========== ESCUCHAR ACTUALIZACIONES DE VENTAS ==========
+    useEffect(() => {
+        const handleActualizar = () => {
+            fetchDashboard();
+            fetchGraficos();
+            fetchGastos();
+        };
+    
+        window.addEventListener('actualizarContabilidad', handleActualizar);
+        
+        return () => {
+            window.removeEventListener('actualizarContabilidad', handleActualizar);
+        };
+    }, []);
 
     // ========== RENDER ==========
     if (loading) {

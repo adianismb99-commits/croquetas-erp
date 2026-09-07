@@ -7,13 +7,14 @@ use App\Models\Venta;
 use App\Models\ProductoFinal;
 use App\Models\Cliente;
 use App\Models\Movimiento;
+use App\Models\Ciclo;
 use Illuminate\Http\Request;
 
 class VentaController extends Controller
 {
     public function index()
     {
-        return response()->json(Venta::with(['cliente', 'productoFinal'])
+        return response()->json(Venta::with(['cliente', 'productoFinal', 'ciclo'])
             ->orderBy('created_at', 'desc')
             ->get());
     }
@@ -31,6 +32,24 @@ class VentaController extends Controller
 
         $validated['total'] = $validated['cantidad'] * $validated['precio_unitario'];
 
+        // 🔥 OBTENER EL CICLO ACTIVO
+        $cicloActual = Ciclo::getCicloActual();
+        
+        // Si no hay ciclo activo, crear uno automáticamente
+        if (!$cicloActual) {
+            $cicloActual = Ciclo::create([
+                'codigo' => Ciclo::generarCodigo(),
+                'numero' => Ciclo::where('codigo', 'like', now()->format('ymd') . '-%')->count() + 1,
+                'fecha_inicio' => now(),
+                'inversion_total' => 0,
+                'estado' => 'abierto'
+            ]);
+        }
+
+        // 🔥 ASIGNAR EL CICLO A LA VENTA
+        $validated['ciclo_id'] = $cicloActual->id;
+
+        // Guardar la venta
         $venta = Venta::create($validated);
 
         $producto = ProductoFinal::find($validated['producto_final_id']);
@@ -57,12 +76,22 @@ class VentaController extends Controller
         $venta->movimiento_id = $movimiento->id;
         $venta->save();
 
-        return response()->json($venta->load(['cliente', 'productoFinal']), 201);
+        // 🔥 ACTUALIZAR EL CICLO CON LOS NUEVOS INGRESOS
+        $this->actualizarCiclo($cicloActual);
+
+        // 🔥 DEVOLVER LA VENTA CON EL CICLO ACTUALIZADO
+        $venta->load(['cliente', 'productoFinal', 'ciclo']);
+        $cicloActual->refresh();
+
+        return response()->json([
+            'venta' => $venta,
+            'ciclo_actual' => $cicloActual
+        ], 201);
     }
 
     public function show($id)
     {
-        $venta = Venta::with(['cliente', 'productoFinal'])->findOrFail($id);
+        $venta = Venta::with(['cliente', 'productoFinal', 'ciclo'])->findOrFail($id);
         return response()->json($venta);
     }
 
@@ -109,25 +138,45 @@ class VentaController extends Controller
             ]
         );
 
-        return response()->json($venta->load(['cliente', 'productoFinal']));
+        // 🔥 ACTUALIZAR EL CICLO DESPUÉS DE EDITAR
+        if ($venta->ciclo_id) {
+            $ciclo = Ciclo::find($venta->ciclo_id);
+            if ($ciclo) {
+                $this->actualizarCiclo($ciclo);
+            }
+        }
+
+        return response()->json($venta->load(['cliente', 'productoFinal', 'ciclo']));
     }
 
     public function destroy($id)
     {
         $venta = Venta::findOrFail($id);
         
+        // 🔥 GUARDAR EL CICLO ANTES DE ELIMINAR
+        $cicloId = $venta->ciclo_id;
+        
         if ($venta->movimiento_id) {
             Movimiento::destroy($venta->movimiento_id);
         }
         
         $venta->delete();
+
+        // 🔥 ACTUALIZAR EL CICLO DESPUÉS DE ELIMINAR
+        if ($cicloId) {
+            $ciclo = Ciclo::find($cicloId);
+            if ($ciclo) {
+                $this->actualizarCiclo($ciclo);
+            }
+        }
+
         return response()->json(null, 204);
     }
 
     public function hoy()
     {
         $hoy = now()->toDateString();
-        $ventas = Venta::with(['cliente', 'productoFinal'])
+        $ventas = Venta::with(['cliente', 'productoFinal', 'ciclo'])
             ->whereDate('fecha_hora', $hoy)
             ->get();
         return response()->json($ventas);
@@ -140,7 +189,7 @@ class VentaController extends Controller
             'fecha_fin' => 'required|date|after_or_equal:fecha_inicio'
         ]);
 
-        $ventas = Venta::with(['productoFinal', 'cliente'])
+        $ventas = Venta::with(['productoFinal', 'cliente', 'ciclo'])
             ->whereBetween('fecha_hora', [
                 $request->fecha_inicio,
                 $request->fecha_fin . ' 23:59:59'
@@ -173,5 +222,23 @@ class VentaController extends Controller
             'por_producto' => $por_producto->values(),
             'por_tipo_cliente' => $por_tipo_cliente->values()
         ]);
+    }
+
+    /**
+     * 🔥 MÉTODO PRIVADO PARA ACTUALIZAR EL CICLO
+     */
+    private function actualizarCiclo($ciclo)
+    {
+        $ciclo->ingresos_totales = $ciclo->ventas()->sum('total');
+        $ciclo->ganancia_bruta = $ciclo->ingresos_totales - $ciclo->inversion_total;
+        $ciclo->ganancia_neta = $ciclo->ganancia_bruta - $ciclo->gastos_operativos;
+        
+        if ($ciclo->inversion_total > 0) {
+            $ciclo->porcentaje_rentabilidad = ($ciclo->ganancia_neta / $ciclo->inversion_total) * 100;
+        } else {
+            $ciclo->porcentaje_rentabilidad = 0;
+        }
+        
+        $ciclo->save();
     }
 }

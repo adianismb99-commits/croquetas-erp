@@ -105,6 +105,7 @@ Route::post('/notificaciones/unsubscribe', [NotificacionController::class, 'unsu
 Route::post('/notificaciones/send-test', [NotificacionController::class, 'sendTest']);
 // Ciclos
 Route::prefix('ciclos')->group(function () {
+    Route::post('/ciclos/nuevo', [CicloController::class, 'nuevo']);
     Route::get('actual', [CicloController::class, 'actual']);
     Route::get('/', [CicloController::class, 'index']);
     Route::get('{id}', [CicloController::class, 'show']);

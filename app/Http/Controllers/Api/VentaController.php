@@ -32,10 +32,8 @@ class VentaController extends Controller
 
         $validated['total'] = $validated['cantidad'] * $validated['precio_unitario'];
 
-        // 🔥 OBTENER EL CICLO ACTIVO
+        // Obtener o crear ciclo activo
         $cicloActual = Ciclo::getCicloActual();
-        
-        // Si no hay ciclo activo, crear uno automáticamente
         if (!$cicloActual) {
             $cicloActual = Ciclo::create([
                 'codigo' => Ciclo::generarCodigo(),
@@ -46,12 +44,12 @@ class VentaController extends Controller
             ]);
         }
 
-        // 🔥 ASIGNAR EL CICLO A LA VENTA
         $validated['ciclo_id'] = $cicloActual->id;
 
-        // Guardar la venta
+        // Guardar venta
         $venta = Venta::create($validated);
 
+        // Crear movimiento
         $producto = ProductoFinal::find($validated['producto_final_id']);
         $cliente = Cliente::find($validated['cliente_id']);
         
@@ -76,47 +74,15 @@ class VentaController extends Controller
         $venta->movimiento_id = $movimiento->id;
         $venta->save();
 
-        // 🔥 ACTUALIZAR EL CICLO CON LOS NUEVOS INGRESOS
+        // 🔥 ACTUALIZAR CICLO
         $this->actualizarCiclo($cicloActual);
 
-        // 🔥 DEVOLVER LA VENTA CON EL CICLO ACTUALIZADO
         $venta->load(['cliente', 'productoFinal', 'ciclo']);
-        $cicloActual->refresh();
 
         return response()->json([
             'venta' => $venta,
-            'ciclo_actual' => $cicloActual
+            'ciclo_actual' => $cicloActual->fresh()
         ], 201);
-        // 🔥 ACTUALIZAR EL CICLO DIRECTAMENTE DESDE LA BD
-        if ($cicloActual) {
-            // Recalcular todo desde cero
-            $totalVentas = Venta::where('ciclo_id', $cicloActual->id)->sum('total');
-            
-            $cicloActual->ingresos_totales = $totalVentas;
-            $cicloActual->ganancia_bruta = $totalVentas - $cicloActual->inversion_total;
-            $cicloActual->ganancia_neta = $cicloActual->ganancia_bruta - $cicloActual->gastos_operativos;
-            
-            if ($cicloActual->inversion_total > 0) {
-                $cicloActual->porcentaje_rentabilidad = ($cicloActual->ganancia_neta / $cicloActual->inversion_total) * 100;
-            } else {
-                $cicloActual->porcentaje_rentabilidad = 0;
-            }
-            
-            $cicloActual->save();
-            
-            // Log para verificar en Render
-            \Log::info('Ciclo actualizado', [
-                'ciclo_id' => $cicloActual->id,
-                'ingresos' => $cicloActual->ingresos_totales,
-                'ganancia_neta' => $cicloActual->ganancia_neta
-            ]);
-        }
-        
-        return response()->json([
-            'venta' => $venta->load(['cliente', 'productoFinal', 'ciclo']),
-            'ciclo_actual' => $cicloActual
-        ], 201);
-    }
     }
 
     public function show($id)
@@ -168,7 +134,7 @@ class VentaController extends Controller
             ]
         );
 
-        // 🔥 ACTUALIZAR EL CICLO DESPUÉS DE EDITAR
+        // Actualizar ciclo
         if ($venta->ciclo_id) {
             $ciclo = Ciclo::find($venta->ciclo_id);
             if ($ciclo) {
@@ -182,8 +148,6 @@ class VentaController extends Controller
     public function destroy($id)
     {
         $venta = Venta::findOrFail($id);
-        
-        // 🔥 GUARDAR EL CICLO ANTES DE ELIMINAR
         $cicloId = $venta->ciclo_id;
         
         if ($venta->movimiento_id) {
@@ -192,7 +156,6 @@ class VentaController extends Controller
         
         $venta->delete();
 
-        // 🔥 ACTUALIZAR EL CICLO DESPUÉS DE ELIMINAR
         if ($cicloId) {
             $ciclo = Ciclo::find($cicloId);
             if ($ciclo) {
@@ -255,12 +218,14 @@ class VentaController extends Controller
     }
 
     /**
-     * 🔥 MÉTODO PRIVADO PARA ACTUALIZAR EL CICLO
+     * 🔥 MÉTODO QUE ACTUALIZA EL CICLO
      */
     private function actualizarCiclo($ciclo)
     {
-        $ciclo->ingresos_totales = $ciclo->ventas()->sum('total');
-        $ciclo->ganancia_bruta = $ciclo->ingresos_totales - $ciclo->inversion_total;
+        $totalVentas = Venta::where('ciclo_id', $ciclo->id)->sum('total');
+        
+        $ciclo->ingresos_totales = $totalVentas;
+        $ciclo->ganancia_bruta = $totalVentas - $ciclo->inversion_total;
         $ciclo->ganancia_neta = $ciclo->ganancia_bruta - $ciclo->gastos_operativos;
         
         if ($ciclo->inversion_total > 0) {

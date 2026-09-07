@@ -21,68 +21,94 @@ class VentaController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'cliente_id' => 'required|exists:clientes,id',
-            'producto_final_id' => 'required|exists:productos_finales,id',
-            'cantidad' => 'required|integer|min:1',
-            'precio_unitario' => 'required|numeric|min:0',
-            'metodo_pago' => 'required|in:efectivo,transferencia',
-            'fecha_hora' => 'required|date'
-        ]);
-
-        $validated['total'] = $validated['cantidad'] * $validated['precio_unitario'];
-
-        // Obtener o crear ciclo activo
-        $cicloActual = Ciclo::getCicloActual();
-        if (!$cicloActual) {
-            $cicloActual = Ciclo::create([
-                'codigo' => Ciclo::generarCodigo(),
-                'numero' => Ciclo::where('codigo', 'like', now()->format('ymd') . '-%')->count() + 1,
-                'fecha_inicio' => now(),
-                'inversion_total' => 0,
-                'estado' => 'abierto'
+        try {
+            $validated = $request->validate([
+                'cliente_id' => 'required|exists:clientes,id',
+                'producto_final_id' => 'required|exists:productos_finales,id',
+                'cantidad' => 'required|integer|min:1',
+                'precio_unitario' => 'required|numeric|min:0',
+                'metodo_pago' => 'required|in:efectivo,transferencia',
+                'fecha_hora' => 'required|date'
             ]);
+
+            $validated['total'] = $validated['cantidad'] * $validated['precio_unitario'];
+
+            // Obtener o crear ciclo activo
+            $cicloActual = Ciclo::getCicloActual();
+            if (!$cicloActual) {
+                $cicloActual = Ciclo::create([
+                    'codigo' => Ciclo::generarCodigo(),
+                    'numero' => Ciclo::where('codigo', 'like', now()->format('ymd') . '-%')->count() + 1,
+                    'fecha_inicio' => now(),
+                    'inversion_total' => 0,
+                    'estado' => 'abierto'
+                ]);
+            }
+
+            $validated['ciclo_id'] = $cicloActual->id;
+
+            // Guardar venta
+            $venta = Venta::create($validated);
+
+            // Crear movimiento
+            $producto = ProductoFinal::find($validated['producto_final_id']);
+            $cliente = Cliente::find($validated['cliente_id']);
+            
+            $codigo = 'VENTA-' . strtoupper(substr($producto->nombre, 0, 3)) . '-' . now()->format('ymd') . '-' . str_pad($venta->id, 3, '0', STR_PAD_LEFT);
+            
+            $movimiento = Movimiento::create([
+                'codigo' => $codigo,
+                'tipo' => 'venta',
+                'producto_id' => $validated['producto_final_id'],
+                'producto_tipo' => 'producto_final',
+                'producto_nombre' => $producto->nombre,
+                'unidad' => 'ud',
+                'cantidad' => $validated['cantidad'],
+                'entrada' => 0,
+                'salida' => $validated['cantidad'],
+                'saldo' => 0,
+                'detalle' => "Venta a: {$cliente->nombre}",
+                'costo_total' => $validated['total'],
+                'fecha' => $validated['fecha_hora']
+            ]);
+
+            $venta->movimiento_id = $movimiento->id;
+            $venta->save();
+
+            // 🔥 ACTUALIZAR CICLO - MÉTODO FUERZA BRUTA
+            $totalVentas = Venta::where('ciclo_id', $cicloActual->id)->sum('total');
+            
+            $cicloActual->ingresos_totales = $totalVentas;
+            $cicloActual->ganancia_bruta = $totalVentas - $cicloActual->inversion_total;
+            $cicloActual->ganancia_neta = $cicloActual->ganancia_bruta - $cicloActual->gastos_operativos;
+            
+            if ($cicloActual->inversion_total > 0) {
+                $cicloActual->porcentaje_rentabilidad = ($cicloActual->ganancia_neta / $cicloActual->inversion_total) * 100;
+            } else {
+                $cicloActual->porcentaje_rentabilidad = 0;
+            }
+            
+            $cicloActual->save();
+
+            // 🔥 FORZAR REFRESH
+            $cicloActual->refresh();
+            $venta->load(['cliente', 'productoFinal', 'ciclo']);
+
+            return response()->json([
+                'venta' => $venta,
+                'ciclo_actual' => $cicloActual,
+                'debug' => [
+                    'total_ventas' => $totalVentas,
+                    'ciclo_id' => $cicloActual->id
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'line' => $e->getLine()
+            ], 500);
         }
-
-        $validated['ciclo_id'] = $cicloActual->id;
-
-        // Guardar venta
-        $venta = Venta::create($validated);
-
-        // Crear movimiento
-        $producto = ProductoFinal::find($validated['producto_final_id']);
-        $cliente = Cliente::find($validated['cliente_id']);
-        
-        $codigo = 'VENTA-' . strtoupper(substr($producto->nombre, 0, 3)) . '-' . now()->format('ymd') . '-' . str_pad($venta->id, 3, '0', STR_PAD_LEFT);
-        
-        $movimiento = Movimiento::create([
-            'codigo' => $codigo,
-            'tipo' => 'venta',
-            'producto_id' => $validated['producto_final_id'],
-            'producto_tipo' => 'producto_final',
-            'producto_nombre' => $producto->nombre,
-            'unidad' => 'ud',
-            'cantidad' => $validated['cantidad'],
-            'entrada' => 0,
-            'salida' => $validated['cantidad'],
-            'saldo' => 0,
-            'detalle' => "Venta a: {$cliente->nombre}",
-            'costo_total' => $validated['total'],
-            'fecha' => $validated['fecha_hora']
-        ]);
-
-        $venta->movimiento_id = $movimiento->id;
-        $venta->save();
-
-        // 🔥 ACTUALIZAR CICLO
-        $this->actualizarCiclo($cicloActual);
-
-        $venta->load(['cliente', 'productoFinal', 'ciclo']);
-
-        return response()->json([
-            'venta' => $venta,
-            'ciclo_actual' => $cicloActual->fresh()
-        ], 201);
     }
 
     public function show($id)
@@ -138,7 +164,16 @@ class VentaController extends Controller
         if ($venta->ciclo_id) {
             $ciclo = Ciclo::find($venta->ciclo_id);
             if ($ciclo) {
-                $this->actualizarCiclo($ciclo);
+                $totalVentas = Venta::where('ciclo_id', $ciclo->id)->sum('total');
+                $ciclo->ingresos_totales = $totalVentas;
+                $ciclo->ganancia_bruta = $totalVentas - $ciclo->inversion_total;
+                $ciclo->ganancia_neta = $ciclo->ganancia_bruta - $ciclo->gastos_operativos;
+                if ($ciclo->inversion_total > 0) {
+                    $ciclo->porcentaje_rentabilidad = ($ciclo->ganancia_neta / $ciclo->inversion_total) * 100;
+                } else {
+                    $ciclo->porcentaje_rentabilidad = 0;
+                }
+                $ciclo->save();
             }
         }
 
@@ -159,7 +194,16 @@ class VentaController extends Controller
         if ($cicloId) {
             $ciclo = Ciclo::find($cicloId);
             if ($ciclo) {
-                $this->actualizarCiclo($ciclo);
+                $totalVentas = Venta::where('ciclo_id', $ciclo->id)->sum('total');
+                $ciclo->ingresos_totales = $totalVentas;
+                $ciclo->ganancia_bruta = $totalVentas - $ciclo->inversion_total;
+                $ciclo->ganancia_neta = $ciclo->ganancia_bruta - $ciclo->gastos_operativos;
+                if ($ciclo->inversion_total > 0) {
+                    $ciclo->porcentaje_rentabilidad = ($ciclo->ganancia_neta / $ciclo->inversion_total) * 100;
+                } else {
+                    $ciclo->porcentaje_rentabilidad = 0;
+                }
+                $ciclo->save();
             }
         }
 
@@ -215,25 +259,5 @@ class VentaController extends Controller
             'por_producto' => $por_producto->values(),
             'por_tipo_cliente' => $por_tipo_cliente->values()
         ]);
-    }
-
-    /**
-     * 🔥 MÉTODO QUE ACTUALIZA EL CICLO
-     */
-    private function actualizarCiclo($ciclo)
-    {
-        $totalVentas = Venta::where('ciclo_id', $ciclo->id)->sum('total');
-        
-        $ciclo->ingresos_totales = $totalVentas;
-        $ciclo->ganancia_bruta = $totalVentas - $ciclo->inversion_total;
-        $ciclo->ganancia_neta = $ciclo->ganancia_bruta - $ciclo->gastos_operativos;
-        
-        if ($ciclo->inversion_total > 0) {
-            $ciclo->porcentaje_rentabilidad = ($ciclo->ganancia_neta / $ciclo->inversion_total) * 100;
-        } else {
-            $ciclo->porcentaje_rentabilidad = 0;
-        }
-        
-        $ciclo->save();
     }
 }

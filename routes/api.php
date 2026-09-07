@@ -126,3 +126,30 @@ Route::get('/prueba-lotes', function() {
         ->get();
     return response()->json($lotes);
 });
+Route::post('/ciclos/forzar-actualizacion', function() {
+    $cicloActual = \App\Models\Ciclo::getCicloActual();
+    
+    if (!$cicloActual) {
+        return response()->json(['error' => 'No hay ciclo activo'], 404);
+    }
+    
+    // Calcular ingresos desde las ventas
+    $totalVentas = \App\Models\Venta::where('ciclo_id', $cicloActual->id)->sum('total');
+    
+    $cicloActual->ingresos_totales = $totalVentas;
+    $cicloActual->ganancia_bruta = $totalVentas - $cicloActual->inversion_total;
+    $cicloActual->ganancia_neta = $cicloActual->ganancia_bruta - $cicloActual->gastos_operativos;
+    
+    if ($cicloActual->inversion_total > 0) {
+        $cicloActual->porcentaje_rentabilidad = ($cicloActual->ganancia_neta / $cicloActual->inversion_total) * 100;
+    } else {
+        $cicloActual->porcentaje_rentabilidad = 0;
+    }
+    
+    $cicloActual->save();
+    
+    return response()->json([
+        'success' => true,
+        'ciclo' => $cicloActual
+    ]);
+});

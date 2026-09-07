@@ -189,6 +189,20 @@ export default function ContabilidadIndex() {
     };
 
     // ========== CICLOS ==========
+    const handleNuevoCiclo = () => {
+        if (confirm('¿Estás seguro de crear un nuevo ciclo? El ciclo actual se cerrará automáticamente.')) {
+            axios.post('/api/ciclos/nuevo')
+                .then(() => {
+                    fetchDashboard();
+                    fetchGraficos();
+                    alert('✅ Nuevo ciclo creado correctamente');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('❌ Error al crear el nuevo ciclo');
+                });
+        }
+    };
     const handleCerrarCiclo = () => {
         if (confirm('¿Estás seguro de cerrar el ciclo actual?')) {
             axios.post('/api/ciclos/cerrar')
@@ -337,6 +351,12 @@ export default function ContabilidadIndex() {
                                     className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors min-h-[44px]"
                                 >
                                     💰 Aumentar inversión
+                                </button>
+                                <button
+                                    onClick={handleNuevoCiclo}
+                                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors min-h-[44px]"
+                                >
+                                    ➕ Nuevo ciclo
                                 </button>
                                 <button
                                     onClick={handleCerrarCiclo}

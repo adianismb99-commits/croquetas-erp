@@ -142,6 +142,111 @@ class ContabilidadController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    public function graficosFiltrados(Request $request)
+    {
+        $tipo = $request->tipo;
+        $fecha_desde = $request->fecha_desde;
+        $fecha_hasta = $request->fecha_hasta;
+        $ciclo_id = $request->ciclo_id;
+    
+        // Determinar el período
+        switch ($tipo) {
+            case 'dia':
+                $inicio = now()->toDateString();
+                $fin = now()->toDateString();
+                break;
+            case 'semana':
+                $inicio = now()->startOfWeek()->toDateString();
+                $fin = now()->endOfWeek()->toDateString();
+                break;
+            case 'mes':
+                $inicio = now()->startOfMonth()->toDateString();
+                $fin = now()->endOfMonth()->toDateString();
+                break;
+            case 'personalizado':
+                $inicio = $fecha_desde;
+                $fin = $fecha_hasta;
+                break;
+            case 'ciclo':
+                if ($ciclo_id) {
+                    $ciclo = Ciclo::with(['ventas', 'lotes', 'gastos'])->find($ciclo_id);
+                    if ($ciclo) {
+                        $ciclo->calcularGanancias();
+                        return response()->json([
+                            'evolucion' => [
+                                ['codigo' => $ciclo->codigo, 'ganancia_neta' => $ciclo->ganancia_neta]
+                            ],
+                            'distribucion_gastos' => $ciclo->gastos->groupBy('categoria_id')->map(function($items) {
+                                $categoria = $items->first()->categoria;
+                                return [
+                                    'categoria' => $categoria ? $categoria->nombre : 'Sin categoría',
+                                    'total' => $items->sum('monto'),
+                                    'color' => $categoria ? $categoria->color : '#6B3FA0'
+                                ];
+                            })->values(),
+                            'comparativa_ciclos' => [
+                                [
+                                    'codigo' => $ciclo->codigo,
+                                    'inversion' => $ciclo->inversion_total,
+                                    'ingresos' => $ciclo->ingresos_totales,
+                                    'ganancia' => $ciclo->ganancia_neta
+                                ]
+                            ],
+                            'total_ciclos' => 1
+                        ]);
+                    }
+                }
+                return response()->json(['error' => 'Ciclo no encontrado'], 404);
+            default:
+                return response()->json(['error' => 'Tipo inválido'], 422);
+        }
+    
+        // Obtener datos del período
+        $ventas = Venta::whereBetween('fecha_hora', [$inicio, $fin])->get();
+        $lotes = LoteInsumo::whereBetween('created_at', [$inicio, $fin])->where('es_inversion', true)->get();
+        $gastos = GastoOperativo::whereBetween('fecha', [$inicio, $fin])->get();
+    
+        // Calcular totales
+        $totalInversion = $lotes->sum('precio_total');
+        $totalIngresos = $ventas->sum('total');
+        $totalGastos = $gastos->sum('monto');
+        $gananciaNeta = ($totalIngresos - $totalInversion) - $totalGastos;
+    
+        // Datos para gráficos
+        $evolucion = [
+            [
+                'codigo' => $tipo . '-' . now()->format('ymd'),
+                'ganancia_neta' => $gananciaNeta
+            ]
+        ];
+    
+        $distribucion = $gastos->groupBy('categoria_id')->map(function($items) {
+            $categoria = $items->first()->categoria;
+            return [
+                'categoria' => $categoria ? $categoria->nombre : 'Sin categoría',
+                'total' => $items->sum('monto'),
+                'color' => $categoria ? $categoria->color : '#6B3FA0'
+            ];
+        })->values();
+    
+        $comparativa = [
+            [
+                'codigo' => $tipo . '-' . now()->format('ymd'),
+                'inversion' => $totalInversion,
+                'ingresos' => $totalIngresos,
+                'ganancia' => $gananciaNeta
+            ]
+        ];
+    
+        return response()->json([
+            'evolucion' => $evolucion,
+            'distribucion_gastos' => $distribucion,
+            'comparativa_ciclos' => $comparativa,
+            'total_ciclos' => 1
+        ]);
+    }
+    
     // Datos para gráficos
     public function graficos()
     {

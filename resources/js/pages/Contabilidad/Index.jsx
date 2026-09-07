@@ -316,6 +316,41 @@ export default function ContabilidadIndex() {
         ]
     };
 
+    const [filtroGrafico, setFiltroGrafico] = useState({
+        tipo: 'dia', // dia, semana, mes, ciclo, personalizado
+        fecha_desde: '',
+        fecha_hasta: '',
+        ciclo_id: ''
+    });
+    
+    const [graficosFiltrados, setGraficosFiltrados] = useState(null);
+    const [cargandoGraficos, setCargandoGraficos] = useState(false);
+    
+    const fetchGraficosFiltrados = () => {
+        setCargandoGraficos(true);
+        let params = new URLSearchParams();
+        params.append('tipo', filtroGrafico.tipo);
+        
+        if (filtroGrafico.tipo === 'personalizado') {
+            params.append('fecha_desde', filtroGrafico.fecha_desde);
+            params.append('fecha_hasta', filtroGrafico.fecha_hasta);
+        }
+        
+        if (filtroGrafico.tipo === 'ciclo' && filtroGrafico.ciclo_id) {
+            params.append('ciclo_id', filtroGrafico.ciclo_id);
+        }
+        
+        axios.get(`/api/contabilidad/graficos-filtrados?${params.toString()}`)
+            .then(response => {
+                setGraficosFiltrados(response.data);
+                setCargandoGraficos(false);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                setCargandoGraficos(false);
+            });
+    };
+
     return (
         <AuthenticatedLayout>
             <div className="space-y-6">
@@ -702,6 +737,80 @@ export default function ContabilidadIndex() {
                                 )}
                             </div>
                         )}
+                    </div>
+                </div>
+
+                {/* Filtros para gráficos */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                    <h4 className="text-sm font-semibold text-[#2D1B3D] mb-3">Filtros de gráficos</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Período</label>
+                            <select
+                                value={filtroGrafico.tipo}
+                                onChange={(e) => setFiltroGrafico({ ...filtroGrafico, tipo: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B3FA0]"
+                            >
+                                <option value="dia">Día</option>
+                                <option value="semana">Semana</option>
+                                <option value="mes">Mes</option>
+                                <option value="ciclo">Ciclo</option>
+                                <option value="personalizado">Personalizado</option>
+                            </select>
+                        </div>
+                        
+                        {filtroGrafico.tipo === 'personalizado' && (
+                            <>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Fecha desde</label>
+                                    <input
+                                        type="date"
+                                        value={filtroGrafico.fecha_desde}
+                                        onChange={(e) => setFiltroGrafico({ ...filtroGrafico, fecha_desde: e.target.value })}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B3FA0]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Fecha hasta</label>
+                                    <input
+                                        type="date"
+                                        value={filtroGrafico.fecha_hasta}
+                                        onChange={(e) => setFiltroGrafico({ ...filtroGrafico, fecha_hasta: e.target.value })}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B3FA0]"
+                                    />
+                                </div>
+                            </>
+                        )}
+                        
+                        {filtroGrafico.tipo === 'ciclo' && (
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Ciclo</label>
+                                <select
+                                    value={filtroGrafico.ciclo_id}
+                                    onChange={(e) => setFiltroGrafico({ ...filtroGrafico, ciclo_id: e.target.value })}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6B3FA0]"
+                                >
+                                    <option value="">Seleccionar ciclo...</option>
+                                    {ciclos_cerrados.map((ciclo) => (
+                                        <option key={ciclo.id} value={ciclo.id}>
+                                            {ciclo.codigo} - ${formatNumber(ciclo.ganancia_neta)}
+                                        </option>
+                                    ))}
+                                    {ciclo_actual && (
+                                        <option value={ciclo_actual.id}>{ciclo_actual.codigo} (actual)</option>
+                                    )}
+                                </select>
+                            </div>
+                        )}
+                        
+                        <div className="flex items-end">
+                            <button
+                                onClick={fetchGraficosFiltrados}
+                                className="bg-[#6B3FA0] hover:bg-[#9B6FC0] text-white px-4 py-1.5 rounded-lg text-sm transition-colors min-h-[44px]"
+                            >
+                                Generar gráficos
+                            </button>
+                        </div>
                     </div>
                 </div>
 

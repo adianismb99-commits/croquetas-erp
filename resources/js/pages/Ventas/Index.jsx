@@ -106,9 +106,9 @@ export default function VentasIndex() {
 
     axios[method](url, formData)
         .then((response) => {
-            fetchVentas(); // Recarga la lista de ventas
+            console.log('✅ Venta guardada:', response.data);
             
-            // 🔥 CERRAR MODAL Y LIMPIAR FORMULARIO
+            fetchVentas();
             setShowModal(false);
             setEditando(null);
             setFormData({
@@ -120,18 +120,20 @@ export default function VentasIndex() {
                 fecha_hora: new Date().toISOString().slice(0, 16)
             });
 
-            // 🔥 RECARGAR LA PÁGINA DE CONTABILIDAD
-            // Opción 1: Recargar toda la página (más simple)
-            if (window.location.pathname === '/contabilidad') {
-                window.location.reload();
-            }
-            
-            // Opción 2: Usar un evento global para actualizar contabilidad
-            window.dispatchEvent(new CustomEvent('actualizarContabilidad'));
+            // 🔥 ESPERAR 1 SEGUNDO Y RECARGAR CONTABILIDAD
+            setTimeout(() => {
+                // Disparar el evento para actualizar contabilidad
+                window.dispatchEvent(new CustomEvent('actualizarContabilidad'));
+                
+                // FORZAR RECARGA COMPLETA (solución temporal)
+                window.location.href = '/contabilidad';
+            }, 500);
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('❌ Error:', error);
+            alert('Error al guardar la venta');
+        });
   };
-
   const handleEdit = (venta) => {
     setEditando(venta);
     setFormData({

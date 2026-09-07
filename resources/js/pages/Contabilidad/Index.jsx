@@ -802,7 +802,7 @@ export default function ContabilidadIndex() {
                                         </option>
                                     ))}
                                     {ciclo_actual && (
-                                        <option value={ciclo_actual.id}>{ciclo_actual.codigo} (actual)</option>
+                                        <option value={ciclo_actual.id}>{ciclo_actual.codigo} (actual) - ${formatNumber(ciclo_actual.ganancia_neta)}</option>
                                     )}
                                 </select>
                             </div>
